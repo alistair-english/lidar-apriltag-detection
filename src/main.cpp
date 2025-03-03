@@ -42,21 +42,8 @@
 #include "configuration.hpp"
 #include "visualisation.hpp"
 
-using namespace cv;
-using namespace std;
-using namespace pcl;
-
-int *rand_rgb() {
-    int *rgb = new int[3];
-    rgb[0] = rand() % 255;
-    rgb[1] = rand() % 255;
-    rgb[2] = rand() % 255;
-
-    return rgb;
-}
-
 std::vector<std::vector<float>> pts1;
-vector<int> id_num;
+std::vector<int> id_num;
 bool use_flip = false;
 
 int main(int argc, char **argv) {
@@ -84,13 +71,13 @@ int main(int argc, char **argv) {
 
     pcl::search::KdTree<pcl::PointXYZI>::Ptr treept1(new pcl::search::KdTree<pcl::PointXYZI>(false));
     norm_est.setSearchMethod(treept1);
-    norm_est.setRadiusSearch(config.norm_radius); // search threshold 0.005
+    norm_est.setRadiusSearch(config.norm_radius);
 
     norm_est.compute(*cloud_n);
 
     // Estimate the Intensity Gradient
     pcl::PointCloud<pcl::IntensityGradient>::Ptr cloud_ig(new pcl::PointCloud<pcl::IntensityGradient>);
-    PointCloud<IntensityGradient> gradient;
+    pcl::PointCloud<pcl::IntensityGradient> gradient;
     pcl::IntensityGradientEstimation<pcl::PointXYZI, pcl::Normal, pcl::IntensityGradient> gradient_est;
 
     gradient_est.setInputCloud(cloud);
@@ -98,18 +85,17 @@ int main(int argc, char **argv) {
 
     pcl::search::KdTree<pcl::PointXYZI>::Ptr treept2(new pcl::search::KdTree<pcl::PointXYZI>(false));
     gradient_est.setSearchMethod(treept2);
-    gradient_est.setRadiusSearch(config.gradient_radius); // search threshold 0.005
+    gradient_est.setRadiusSearch(config.gradient_radius);
     gradient_est.compute(gradient);
 
-    // float intensity_threshold = 5000; //intensity threshold 2000
     float intensity_threshold = config.intensity_threshold;
-    vector<std::vector<float>> valid_points;
-    vector<float> valid_point;
+    std::vector<std::vector<float>> valid_points;
+    std::vector<float> valid_point;
     int counter = 0;
     float intensity_max = 0.001;
     float mid;
 
-    priority_queue<float> q;
+    std::priority_queue<float> q;
     float ratio_q;
 
     ratio_q = 0.02;
@@ -121,7 +107,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < len; ++i) {
             const float *g_est = gradient[i].gradient;
             float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
-            if (!isnan(magnitude))
+            if (!std::isnan(magnitude))
                 q.push(magnitude);
         }
 
@@ -153,7 +139,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < len; ++i) {
             const float *g_est = gradient[i].gradient;
             float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
-            if (!isnan(magnitude))
+            if (!std::isnan(magnitude))
                 q.push(magnitude);
         }
         /*int flag =0;
@@ -189,7 +175,7 @@ int main(int argc, char **argv) {
         const float *g_est = gradient[p].gradient;
         float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
         // if(magnitude>intensity_max)
-        if (!isnan(magnitude))
+        if (!std::isnan(magnitude))
             // intensity_max +=  magnitude;
             // magnitude = magnitude/intensity_max ;
             // if (!isnan(magnitude) && magnitude > threshold){
@@ -219,22 +205,19 @@ int main(int argc, char **argv) {
     }
     add_feature_pointcloud(viewer, intensity_feature, viewports);
 
-    // 		//-------------------------------------features
-    // extracted----------------------------------------------------
-    // 		// Conduct EuclideanCluster on the features
+    // --- features extracted ---
+    // Conduct EuclideanCluster on the features
     pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZI>);
     tree->setInputCloud(intensity_feature);
     std::vector<pcl::PointIndices> cluster_indices;
 
     pcl::EuclideanClusterExtraction<pcl::PointXYZI> ec;
-    ec.setClusterTolerance(config.EuclideanTolerance); // search tolerance fuck it! 0.01
+    ec.setClusterTolerance(config.EuclideanTolerance);
     ec.setMinClusterSize(100);
     ec.setMaxClusterSize(100000);
     ec.setSearchMethod(tree);
     ec.setInputCloud(intensity_feature);
     ec.extract(cluster_indices);
-
-    // // 			//pcl::PCDWriter writer;
 
     std::vector<float> moment_of_inertia;
     std::vector<float> eccentricity;
@@ -292,7 +275,7 @@ int main(int argc, char **argv) {
             max1 = OBB_depth;
         } else if (OBB_depth < max1 && OBB_depth >= max2)
             max2 = OBB_depth;
-        // test
+
         add_oriented_bounding_box(
             viewer,
             position,
@@ -490,7 +473,7 @@ int main(int argc, char **argv) {
             }
 
             // Create cv::Mat
-            Mat image = Mat(range_image_i.height, range_image_i.width, CV_8UC4);
+            cv::Mat image = cv::Mat(range_image_i.height, range_image_i.width, CV_8UC4);
             unsigned char r, g, b;
 
 // pcl::PointCloud to cv::Mat
@@ -514,11 +497,11 @@ int main(int argc, char **argv) {
             ss1 << "mysesult" << j << ".png";
 
             imwrite(ss1.str(), image);
-            Mat gray;
-            Mat gray_flip;
-            cvtColor(image, gray, COLOR_BGR2GRAY);
+            cv::Mat gray;
+            cv::Mat gray_flip;
+            cvtColor(image, gray, cv::COLOR_BGR2GRAY);
 
-            threshold(gray, gray, config.binary_threshold, 255, THRESH_BINARY);
+            threshold(gray, gray, config.binary_threshold, 255, cv::THRESH_BINARY);
             // GaussianBlur(gray, gray, Size(3, 3), 25, 0, 4);
             flip(gray, gray_flip, 1);
 
