@@ -69,10 +69,7 @@ int main(int argc, char **argv) {
     }
 
     auto [viewer, viewports] = create_visualizer();
-
-    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> raw_pointcloud(cloud, "intensity");
-    viewer->addPointCloud(cloud, raw_pointcloud, "raw point cloud", viewports.v1);
-    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 0.25, "raw point cloud");
+    add_raw_pointcloud(viewer, cloud, viewports.v1);
 
     int j = 0;
     int jj = 0;
@@ -220,12 +217,7 @@ int main(int argc, char **argv) {
         intensity_feature_pointcloud.points[q].y = valid_points[q][1];
         intensity_feature_pointcloud.points[q].z = valid_points[q][2];
     }
-    visualization::PointCloudColorHandlerCustom<pcl::PointXYZI> rgb2(intensity_feature, 0, 255, 0); // feature cloud
-    viewer->addPointCloud(intensity_feature, rgb2, "intensity_feature_v2", viewports.v2);
-    viewer->addPointCloud(intensity_feature, rgb2, "intensity_feature_v3", viewports.v3);
-    viewer->addPointCloud(intensity_feature, rgb2, "intensity_feature_v4", viewports.v4);
-    viewer->addPointCloud(intensity_feature, rgb2, "intensity_feature_v5", viewports.v5);
-    viewer->addPointCloud(intensity_feature, rgb2, "intensity_feature_v6", viewports.v6);
+    add_feature_pointcloud(viewer, intensity_feature, viewports);
 
     // 		//-------------------------------------features
     // extracted----------------------------------------------------
@@ -300,14 +292,16 @@ int main(int argc, char **argv) {
             max1 = OBB_depth;
         } else if (OBB_depth < max1 && OBB_depth >= max2)
             max2 = OBB_depth;
-        // viewer->removeShape("OBBoriginal"+jj);
-
         // test
-        viewer->addCube(position, quat, OBB_width, OBB_height, OBB_depth, "OBBoriginal" + 2 * jj, viewports.v3);
-        viewer->setShapeRenderingProperties(
-            pcl::visualization::PCL_VISUALIZER_REPRESENTATION,
-            pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME,
-            "OBBoriginal" + 2 * jj
+        add_oriented_bounding_box(
+            viewer,
+            position,
+            quat,
+            OBB_width,
+            OBB_height,
+            OBB_depth,
+            "OBBoriginal" + std::to_string(2 * jj),
+            viewports.v3
         );
 
         jj++;
@@ -372,13 +366,16 @@ int main(int argc, char **argv) {
             // fildColor_transformed, "OBB3"+j);
 
             pcl::transformPointCloud(*points_in_box_transformed, *points_in_box_transformed, transform_2);
-            // viewer->removeShape(j+"OBB_v4");
             // test
-            viewer->addCube(position, quat, OBB_width, OBB_height, OBB_depth, "extractedv4" + jj + 1, viewports.v4);
-            viewer->setShapeRenderingProperties(
-                pcl::visualization::PCL_VISUALIZER_REPRESENTATION,
-                pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME,
-                "extractedv4" + jj + 1
+            add_oriented_bounding_box(
+                viewer,
+                position,
+                quat,
+                OBB_width,
+                OBB_height,
+                OBB_depth,
+                "extractedv4" + std::to_string(jj + 1),
+                viewports.v4
             );
 
             //***********************************
@@ -715,15 +712,8 @@ int main(int argc, char **argv) {
                 }
             }
 
-            pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> fildColor(
-                points_in_box, "intensity"
-            );
-            pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> fildColor_transformed(
-                points_in_box_transformed, "intensity"
-            );
-            viewer->addPointCloud(points_in_box, fildColor, "points_in_box" + jj, viewports.v5);
-            // viewer->addPointCloud(points_in_box_transformed, fildColor_transformed,
-            // "points_in_box_transformed"+jj,v5);
+            add_points_in_box(viewer, points_in_box, "points_in_box" + std::to_string(jj), viewports.v5);
+            // We could also add points_in_box_transformed if needed
 
             j++; // only the vaild candidates are preseved in this {}
 
@@ -731,25 +721,7 @@ int main(int argc, char **argv) {
 
     } // the loop the go through the feature clusters
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr vertex_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ> &vertex_cloud = *vertex_cloud_ptr;
-
-    vertex_cloud.width = pts1.size();
-    vertex_cloud.height = 1;
-    vertex_cloud.is_dense = false;
-    vertex_cloud.points.resize(vertex_cloud.width * vertex_cloud.height);
-
-    for (size_t p = 0; p < pts1.size(); ++p) {
-
-        vertex_cloud.points[p].x = pts1[p][0];
-        vertex_cloud.points[p].y = pts1[p][1];
-        vertex_cloud.points[p].z = pts1[p][2];
-    }
-
-    visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> rgb3(vertex_cloud_ptr, 255, 0, 0); // feature cloud
-
-    viewer->addPointCloud(vertex_cloud_ptr, rgb3, "vertex_cloud", viewports.v6);
-    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 8, "vertex_cloud");
+    add_marker_vertices(viewer, pts1, viewports.v6);
 
     std::cout << "Number of detected marker(s) is"
               << "\t" << id_num.size() << "."
