@@ -1,2 +1,4 @@
 .aider*
 build/
+.cache/
+base.pcd
