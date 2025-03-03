@@ -4,8 +4,8 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer() {
-    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3d view"));
+std::tuple<pcl::visualization::PCLVisualizer::Ptr, Viewports> create_visualizer() {
+    auto viewer = std::make_shared<pcl::visualization::PCLVisualizer>("3d view");
 
     Viewports viewports = {0, 0, 0, 0, 0, 0};
 
@@ -103,8 +103,7 @@ void add_marker_vertices(
     const std::vector<std::vector<float>> &vertices,
     int viewport_id
 ) {
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr vertex_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    auto vertex_cloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     pcl::PointCloud<pcl::PointXYZ> &vertex_cloud = *vertex_cloud_ptr;
 
     vertex_cloud.width = vertices.size();

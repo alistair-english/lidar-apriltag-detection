@@ -33,7 +33,7 @@ Configuration load_configuration(const std::string &config_file) {
 }
 
 pcl::PointCloud<pcl::PointXYZI>::Ptr load_pointcloud(const std::string &filename) {
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    auto cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
 
     if (pcl::io::loadPCDFile(filename, *cloud) == -1) {
         PCL_ERROR("Failed to read point cloud file");
