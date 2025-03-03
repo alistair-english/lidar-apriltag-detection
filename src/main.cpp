@@ -1,16 +1,12 @@
-#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include <float.h>
 #include <iostream>
-#include <iterator>
-#include <limits>
 #include <queue>
 #include <string>
 #include <vector>
 #include <vtkAutoInit.h>
 
-#include "opencv2/highgui.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 
@@ -41,8 +37,9 @@
 #include <pcl/visualization/common/float_image_utils.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include "yaml-cpp/yaml.h"
 #include <Eigen/Core>
+
+#include "configuration.hpp"
 
 using namespace cv;
 using namespace std;
@@ -73,32 +70,20 @@ int v6(0);
 // --------------
 int main(int argc, char **argv) {
 
-    YAML::Node conf = YAML::LoadFile("config.yaml");
-    const std::string filename = conf["filename"].as<std::string>();
-    const std::string tag_family = conf["tag_family"].as<std::string>();
-    float marker_size = conf["marker_size"].as<float>();
-    float tolerance = conf["tolerance"].as<float>();
-    float ratio_threshold = conf["ratio_threshold"].as<float>();
-    float buffer = conf["buffer"].as<float>();
-    float intensity_threshold = conf["intensity_threshold"].as<float>();
-    float EuclideanTolerance = conf["EuclideanTolerance"].as<float>();
-    float ang_resolution = conf["ang_resolution"].as<float>();
-    float binary_threshold = conf["binary_threshold"].as<float>();
-    float norm_radius = conf["norm_radius"].as<float>();
-    float gradient_radius = conf["gradient_radius"].as<float>();
+    const Configuration config = load_configuration("config.yaml");
 
-    float cuboid_dia_min = sqrt(2 * marker_size * marker_size);
-    float cuboid_dia_max = sqrt(4 * marker_size * marker_size + tolerance * tolerance);
+    float cuboid_dia_min = sqrt(2 * config.marker_size * config.marker_size);
+    float cuboid_dia_max = sqrt(4 * config.marker_size * config.marker_size + config.tolerance * config.tolerance);
 
-    float cuboid_area_min = sqrt(marker_size * marker_size);
-    float cuboid_area_max = sqrt(2 * marker_size * marker_size + tolerance * tolerance);
+    float cuboid_area_min = sqrt(config.marker_size * config.marker_size);
+    float cuboid_area_max = sqrt(2 * config.marker_size * config.marker_size + config.tolerance * config.tolerance);
 
     // read the point
     // cloud*********************************************************
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
     // if (io::loadPCDFile("./ar.pcd", *cloud) == -1){
-    if (io::loadPCDFile(filename, *cloud) == -1) {
+    if (io::loadPCDFile(config.filename, *cloud) == -1) {
         PCL_ERROR("read false");
 
         return 0;
@@ -154,7 +139,7 @@ int main(int argc, char **argv) {
 
     pcl::search::KdTree<pcl::PointXYZI>::Ptr treept1(new pcl::search::KdTree<pcl::PointXYZI>(false));
     norm_est.setSearchMethod(treept1);
-    norm_est.setRadiusSearch(norm_radius); // search threshold 0.005
+    norm_est.setRadiusSearch(config.norm_radius); // search threshold 0.005
 
     norm_est.compute(*cloud_n);
 
@@ -168,10 +153,11 @@ int main(int argc, char **argv) {
 
     pcl::search::KdTree<pcl::PointXYZI>::Ptr treept2(new pcl::search::KdTree<pcl::PointXYZI>(false));
     gradient_est.setSearchMethod(treept2);
-    gradient_est.setRadiusSearch(gradient_radius); // search threshold 0.005
+    gradient_est.setRadiusSearch(config.gradient_radius); // search threshold 0.005
     gradient_est.compute(gradient);
 
-    // float intensity_threshold=5000; //intensity threshold 2000
+    // float intensity_threshold = 5000; //intensity threshold 2000
+    float intensity_threshold = config.intensity_threshold;
     vector<std::vector<float>> valid_points;
     vector<float> valid_point;
     int counter = 0;
@@ -301,7 +287,7 @@ int main(int argc, char **argv) {
     std::vector<pcl::PointIndices> cluster_indices;
 
     pcl::EuclideanClusterExtraction<pcl::PointXYZI> ec;
-    ec.setClusterTolerance(EuclideanTolerance); // search tolerance fuck it! 0.01
+    ec.setClusterTolerance(config.EuclideanTolerance); // search tolerance fuck it! 0.01
     ec.setMinClusterSize(100);
     ec.setMaxClusterSize(100000);
     ec.setSearchMethod(tree);
@@ -378,10 +364,10 @@ int main(int argc, char **argv) {
 
         jj++;
 
-        if (max1 / max2 < ratio_threshold && max2 / max1 > 1 / ratio_threshold && cuboid_dia_min <= OBB_dia &&
-            OBB_dia <= cuboid_dia_max) {
-            // if (max1/max2<ratio_threshold && max2/max1>1/ratio_threshold){
-            // if (max1/max2<ratio_threshold && max2/max1>1/ratio_threshold &&
+        if (max1 / max2 < config.ratio_threshold && max2 / max1 > 1 / config.ratio_threshold &&
+            cuboid_dia_min <= OBB_dia && OBB_dia <= cuboid_dia_max) {
+            // if (max1/max2<config.ratio_threshold && max2/max1>1/config.ratio_threshold){
+            // if (max1/max2<config.ratio_threshold && max2/max1>1/config.ratio_threshold &&
             // cuboid_area_min <= (max1*max2) && (max1*max2)<=cuboid_area_max){
 
             pcl::PointCloud<pcl::PointXYZI>::Ptr points_in_box{new pcl::PointCloud<pcl::PointXYZI>};
@@ -397,12 +383,12 @@ int main(int argc, char **argv) {
             box_filter.setRotation(euler_angles);
             box_filter.setTranslation(position);
 
-            box_filter.setMin(
-                Eigen::Vector4f(buffer * min_point_OBB.x, buffer * min_point_OBB.y, buffer * min_point_OBB.z, 1.0)
-            );
-            box_filter.setMax(
-                Eigen::Vector4f(buffer * max_point_OBB.x, buffer * max_point_OBB.y, buffer * max_point_OBB.x, 1.0)
-            );
+            box_filter.setMin(Eigen::Vector4f(
+                config.buffer * min_point_OBB.x, config.buffer * min_point_OBB.y, config.buffer * min_point_OBB.z, 1.0
+            ));
+            box_filter.setMax(Eigen::Vector4f(
+                config.buffer * max_point_OBB.x, config.buffer * max_point_OBB.y, config.buffer * max_point_OBB.x, 1.0
+            ));
 
             box_filter.filter(*points_in_box);
             box_filter.setNegative(true);
@@ -509,9 +495,9 @@ int main(int argc, char **argv) {
             pcl::RangeImage::Ptr range_image_i_ptr(new pcl::RangeImage);
             pcl::RangeImage &range_image_i = *range_image_i_ptr;
 
-            float angularResolution = (float)(ang_resolution * (M_PI / 180.0f)); //   1.0 degree in radians
-            float maxAngleWidth = (float)(120.0f * (M_PI / 180.0f));             // 360.0 degree in radians
-            float maxAngleHeight = (float)(120.0f * (M_PI / 180.0f));            // 180.0 degree in radians
+            float angularResolution = (float)(config.ang_resolution * (M_PI / 180.0f)); //   1.0 degree in radians
+            float maxAngleWidth = (float)(120.0f * (M_PI / 180.0f));                    // 360.0 degree in radians
+            float maxAngleHeight = (float)(120.0f * (M_PI / 180.0f));                   // 180.0 degree in radians
             Eigen::Affine3f sensorPose = (Eigen::Affine3f)Eigen::Translation3f(0.0f, 0.0f, 0.0f);
             pcl::RangeImage::CoordinateFrame coordinate_frame = pcl::RangeImage::LASER_FRAME;
             float noiseLevel = 0.00;
@@ -587,7 +573,7 @@ int main(int argc, char **argv) {
             Mat gray_flip;
             cvtColor(image, gray, COLOR_BGR2GRAY);
 
-            threshold(gray, gray, binary_threshold, 255, THRESH_BINARY);
+            threshold(gray, gray, config.binary_threshold, 255, THRESH_BINARY);
             // GaussianBlur(gray, gray, Size(3, 3), 25, 0, 4);
             flip(gray, gray_flip, 1);
 
