@@ -9,8 +9,8 @@ The citation for the original work is:
 ```
 @ARTICLE{10654791,
   author={Liu, Yibo and Shan, Jinjun and Schofield, Hunter},
-  journal={IEEE Access}, 
-  title={Improvements to Thin-Sheet 3D LiDAR Fiducial Tag Localization}, 
+  journal={IEEE Access},
+  title={Improvements to Thin-Sheet 3D LiDAR Fiducial Tag Localization},
   year={2024},
   volume={12},
   number={},
