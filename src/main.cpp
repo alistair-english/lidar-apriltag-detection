@@ -16,9 +16,7 @@
 #include <pcl/common/common_headers.h>
 #include <pcl/common/transforms.h>
 #include <pcl/console/parse.h>
-#include <pcl/features/intensity_gradient.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
-#include <pcl/features/normal_3d.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/statistical_outlier_removal.h>
@@ -40,6 +38,7 @@
 #include <Eigen/Core>
 
 #include "configuration.hpp"
+#include "feature_extraction.hpp"
 #include "visualisation.hpp"
 
 std::vector<std::vector<float>> pts1;
@@ -63,67 +62,27 @@ int main(int argc, char **argv) {
 
     // --- extract features ---
     // Estimate the surface normals
-    pcl::PointCloud<pcl::Normal>::Ptr cloud_n(new pcl::PointCloud<pcl::Normal>);
-    pcl::NormalEstimation<pcl::PointXYZI, pcl::Normal> norm_est;
-    // norm_est.setInputCloud(ext_cloud_ptr);
-    norm_est.setInputCloud(cloud);
-    norm_est.setInputCloud(cloud);
-
-    pcl::search::KdTree<pcl::PointXYZI>::Ptr treept1(new pcl::search::KdTree<pcl::PointXYZI>(false));
-    norm_est.setSearchMethod(treept1);
-    norm_est.setRadiusSearch(config.norm_radius);
-
-    norm_est.compute(*cloud_n);
+    pcl::PointCloud<pcl::Normal>::Ptr cloud_n = estimate_normals(cloud, config.norm_radius);
 
     // Estimate the Intensity Gradient
-    pcl::PointCloud<pcl::IntensityGradient>::Ptr cloud_ig(new pcl::PointCloud<pcl::IntensityGradient>);
-    pcl::PointCloud<pcl::IntensityGradient> gradient;
-    pcl::IntensityGradientEstimation<pcl::PointXYZI, pcl::Normal, pcl::IntensityGradient> gradient_est;
+    pcl::PointCloud<pcl::IntensityGradient>::Ptr gradient =
+        estimate_intensity_gradients(cloud, cloud_n, config.gradient_radius);
 
-    gradient_est.setInputCloud(cloud);
-    gradient_est.setInputNormals(cloud_n);
-
-    pcl::search::KdTree<pcl::PointXYZI>::Ptr treept2(new pcl::search::KdTree<pcl::PointXYZI>(false));
-    gradient_est.setSearchMethod(treept2);
-    gradient_est.setRadiusSearch(config.gradient_radius);
-    gradient_est.compute(gradient);
-
+    // Calculate intensity threshold using priority queue
     float intensity_threshold = config.intensity_threshold;
-    std::vector<std::vector<float>> valid_points;
-    std::vector<float> valid_point;
-    int counter = 0;
-    float intensity_max = 0.001;
     float mid;
-
     std::priority_queue<float> q;
-    float ratio_q;
-
-    ratio_q = 0.02;
+    float ratio_q = 0.02;
 
     if (cloud->size() & 1) {
-        //   int len = (cloud->size()+1)/2;
         int len = cloud->size();
 
         for (int i = 0; i < len; ++i) {
-            const float *g_est = gradient[i].gradient;
+            const float *g_est = (*gradient)[i].gradient;
             float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
             if (!std::isnan(magnitude))
                 q.push(magnitude);
         }
-
-        /*for(int i=len;i<cloud->size();++i)
-        {
-              const float * g_est = gradient[i].gradient;
-              float magnitude =
-        std::sqrt(g_est[0]*g_est[0]+g_est[1]*g_est[1]+g_est[2]*g_est[2]); if
-        (q.top()<magnitude)
-              {
-                      q.pop();
-                      q.push(magnitude);
-              }
-
-
-        }*/
 
         for (int i = 0; i < q.size() * ratio_q; i++) {
             q.pop();
@@ -133,32 +92,14 @@ int main(int argc, char **argv) {
     }
 
     if (cloud->size() & 2) {
-        // int len = (cloud->size())/2;
-
         int len = cloud->size();
         for (int i = 0; i < len; ++i) {
-            const float *g_est = gradient[i].gradient;
+            const float *g_est = (*gradient)[i].gradient;
             float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
             if (!std::isnan(magnitude))
                 q.push(magnitude);
         }
-        /*int flag =0;
-                for(int i=len;i<cloud->size();++i)
-        {
-              const float * g_est = gradient[i].gradient;
-              float magnitude =
-        std::sqrt(g_est[0]*g_est[0]+g_est[1]*g_est[1]+g_est[2]*g_est[2]); if
-        (q.top()<magnitude)
-              {
-                      flag = q.top();
-                      q.pop();
-                      q.push(magnitude);
-              }
 
-
-        }*/
-
-        // mid = (q.top()+flag)/2;
         for (int i = 0; i < q.size() * ratio_q; i++) {
             q.pop();
         }
@@ -166,43 +107,11 @@ int main(int argc, char **argv) {
         mid = q.top();
     }
 
-    // cout<<"mid"<<mid<<endl;
-
     intensity_threshold = mid;
 
-    for (size_t p = 0; p < cloud->size(); ++p) {
-
-        const float *g_est = gradient[p].gradient;
-        float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
-        // if(magnitude>intensity_max)
-        if (!std::isnan(magnitude))
-            // intensity_max +=  magnitude;
-            // magnitude = magnitude/intensity_max ;
-            // if (!isnan(magnitude) && magnitude > threshold){
-            if (magnitude > intensity_threshold) {
-                ++counter;
-                valid_point = {cloud->points[p].x, cloud->points[p].y, cloud->points[p].z, cloud->points[p].intensity};
-                valid_points.push_back(valid_point);
-            } // for loop to check magnitude
-    }
-
-    // cout<<"mean"<<intensity_max/cloud->size()<<endl;
-
-    pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_feature(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointCloud<pcl::PointXYZI> &intensity_feature_pointcloud = *intensity_feature;
-
-    intensity_feature_pointcloud.width = counter;
-    intensity_feature_pointcloud.height = 1;
-    intensity_feature_pointcloud.is_dense = false;
-    intensity_feature_pointcloud.points.resize(
-        intensity_feature_pointcloud.width * intensity_feature_pointcloud.height
-    );
-
-    for (size_t q = 0; q < counter; ++q) {
-        intensity_feature_pointcloud.points[q].x = valid_points[q][0];
-        intensity_feature_pointcloud.points[q].y = valid_points[q][1];
-        intensity_feature_pointcloud.points[q].z = valid_points[q][2];
-    }
+    // Extract feature points based on intensity gradient magnitude
+    pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_feature =
+        extract_feature_points(cloud, gradient, intensity_threshold);
     add_feature_pointcloud(viewer, intensity_feature, viewports);
 
     // --- features extracted ---
@@ -749,8 +658,6 @@ int main(int argc, char **argv) {
     while (!viewer->wasStopped()) {
         viewer->spinOnce();
     }
-
-    // viewer->spin();
 
     return 0;
 }

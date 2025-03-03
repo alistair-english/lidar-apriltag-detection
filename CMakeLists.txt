@@ -14,7 +14,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable(tag_detection src/main.cpp src/configuration.cpp src/visualisation.cpp)
+add_executable(tag_detection src/main.cpp src/configuration.cpp src/visualisation.cpp src/feature_extraction.cpp)
 
 target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS} yaml-cpp)
 
