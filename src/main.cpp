@@ -57,9 +57,6 @@ int main(int argc, char **argv) {
     auto [viewer, viewports] = create_visualizer();
     add_raw_pointcloud(viewer, cloud, viewports.v1);
 
-    int j = 0;
-    int jj = 0;
-
     // --- extract features ---
     // Estimate the surface normals
     pcl::PointCloud<pcl::Normal>::Ptr cloud_n = estimate_normals(cloud, config.norm_radius);
@@ -68,46 +65,8 @@ int main(int argc, char **argv) {
     pcl::PointCloud<pcl::IntensityGradient>::Ptr gradient =
         estimate_intensity_gradients(cloud, cloud_n, config.gradient_radius);
 
-    // Calculate intensity threshold using priority queue
-    float intensity_threshold = config.intensity_threshold;
-    float mid;
-    std::priority_queue<float> q;
-    float ratio_q = 0.02;
-
-    if (cloud->size() & 1) {
-        int len = cloud->size();
-
-        for (int i = 0; i < len; ++i) {
-            const float *g_est = (*gradient)[i].gradient;
-            float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
-            if (!std::isnan(magnitude))
-                q.push(magnitude);
-        }
-
-        for (int i = 0; i < q.size() * ratio_q; i++) {
-            q.pop();
-        }
-
-        mid = q.top();
-    }
-
-    if (cloud->size() & 2) {
-        int len = cloud->size();
-        for (int i = 0; i < len; ++i) {
-            const float *g_est = (*gradient)[i].gradient;
-            float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
-            if (!std::isnan(magnitude))
-                q.push(magnitude);
-        }
-
-        for (int i = 0; i < q.size() * ratio_q; i++) {
-            q.pop();
-        }
-
-        mid = q.top();
-    }
-
-    intensity_threshold = mid;
+    // Calculate intensity threshold
+    float intensity_threshold = calculate_intensity_threshold(gradient);
 
     // Extract feature points based on intensity gradient magnitude
     pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_feature =
@@ -115,6 +74,7 @@ int main(int argc, char **argv) {
     add_feature_pointcloud(viewer, intensity_feature, viewports);
 
     // --- features extracted ---
+
     // Conduct EuclideanCluster on the features
     pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZI>);
     tree->setInputCloud(intensity_feature);
@@ -137,6 +97,9 @@ int main(int argc, char **argv) {
     float major_value, middle_value, minor_value;
     Eigen::Vector3f major_vector, middle_vector, minor_vector;
     Eigen::Vector3f mass_center;
+
+    int j = 0;
+    int jj = 0;
 
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end();
          ++it) {

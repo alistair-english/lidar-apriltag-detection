@@ -40,3 +40,12 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr extract_feature_points(
     const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient,
     float intensity_threshold
 );
+
+/**
+ * Calculate intensity threshold using priority queue
+ *
+ * @param gradient Intensity gradients
+ * @param ratio_q Ratio for threshold calculation (default: 0.02)
+ * @return Calculated intensity threshold
+ */
+float calculate_intensity_threshold(const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient, float ratio_q = 0.02);

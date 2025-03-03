@@ -39,6 +39,27 @@ pcl::PointCloud<pcl::IntensityGradient>::Ptr estimate_intensity_gradients(
     return gradient;
 }
 
+float calculate_intensity_threshold(const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient, float ratio_q) {
+    std::priority_queue<float> q;
+
+    // Calculate gradient magnitudes and add to priority queue
+    for (size_t i = 0; i < gradient->size(); ++i) {
+        const float *g_est = (*gradient)[i].gradient;
+        float magnitude = std::sqrt(g_est[0] * g_est[0] + g_est[1] * g_est[1] + g_est[2] * g_est[2]);
+        if (!std::isnan(magnitude)) {
+            q.push(magnitude);
+        }
+    }
+
+    // Pop top elements based on ratio
+    for (int i = 0; i < q.size() * ratio_q; i++) {
+        q.pop();
+    }
+
+    // Return threshold
+    return q.empty() ? 0.0f : q.top();
+}
+
 pcl::PointCloud<pcl::PointXYZI>::Ptr extract_feature_points(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud,
     const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient,
