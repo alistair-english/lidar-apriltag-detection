@@ -28,21 +28,8 @@ struct Configuration {
     float cuboid_area_max;
 };
 
-// Struct to hold viewport IDs
-struct Viewports {
-    int v1;
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-};
-
 // Load configuration from a YAML file
 Configuration load_configuration(const std::string &config_file = "config.yaml");
 
 // Load point cloud from a file
 pcl::PointCloud<pcl::PointXYZI>::Ptr load_pointcloud(const std::string &filename);
-
-// Create and configure PCL visualizer with multiple viewports
-std::tuple<boost::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer();

@@ -40,6 +40,7 @@
 #include <Eigen/Core>
 
 #include "configuration.hpp"
+#include "visualisation.hpp"
 
 using namespace cv;
 using namespace std;
@@ -58,9 +59,6 @@ std::vector<std::vector<float>> pts1;
 vector<int> id_num;
 bool use_flip = false;
 
-// --------------
-// -----Main-----
-// --------------
 int main(int argc, char **argv) {
 
     const Configuration config = load_configuration("config.yaml");
@@ -72,8 +70,8 @@ int main(int argc, char **argv) {
 
     auto [viewer, viewports] = create_visualizer();
 
-    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> fildColor_raw(cloud, "intensity");
-    viewer->addPointCloud(cloud, fildColor_raw, "raw point cloud", viewports.v1);
+    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> raw_pointcloud(cloud, "intensity");
+    viewer->addPointCloud(cloud, raw_pointcloud, "raw point cloud", viewports.v1);
     viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 0.25, "raw point cloud");
 
     int j = 0;
