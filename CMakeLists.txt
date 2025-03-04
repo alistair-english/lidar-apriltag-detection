@@ -14,13 +14,12 @@ link_directories(${PCL_LIBRARY_DIRS})
 
 add_definitions(${PCL_DEFINITIONS})
 
-add_executable(
-    original_tag_detection src/original/main.cpp src/original/configuration.cpp src/original/visualisation.cpp
-                           src/original/feature_extraction.cpp
-)
-target_link_libraries(original_tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS} yaml-cpp)
+# add_executable( original_tag_detection src/original/main.cpp src/original/configuration.cpp
+# src/original/visualisation.cpp src/original/feature_extraction.cpp ) target_link_libraries(original_tag_detection
+# ${PCL_LIBRARIES} ${OpenCV_LIBS} yaml-cpp)
 
-# Copy config file to build directory if it exists
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config.yaml")
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.yaml ${CMAKE_CURRENT_BINARY_DIR}/config.yaml COPYONLY)
-endif()
+add_executable(tag_detection src/main.cpp)
+target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS})
+
+# # Copy config file to build directory if it exists if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config.yaml")
+# configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.yaml ${CMAKE_CURRENT_BINARY_DIR}/config.yaml COPYONLY) endif()
