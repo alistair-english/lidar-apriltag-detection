@@ -18,7 +18,7 @@ add_definitions(${PCL_DEFINITIONS})
 # src/original/visualisation.cpp src/original/feature_extraction.cpp ) target_link_libraries(original_tag_detection
 # ${PCL_LIBRARIES} ${OpenCV_LIBS} yaml-cpp)
 
-add_executable(tag_detection src/main.cpp src/intensity_gradient_filtering.cpp)
+add_executable(tag_detection src/main.cpp src/intensity_gradient_filtering.cpp src/visualisation.cpp)
 target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
 # # Copy config file to build directory if it exists if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config.yaml")

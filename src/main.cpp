@@ -2,6 +2,7 @@
 
 #include "intensity_gradient_filtering.hpp"
 #include "pointcloud.hpp"
+#include "visualisation.hpp"
 
 int main(int argc, char **argv) {
     const auto cloud = load_cloud("base.pcd");
@@ -28,6 +29,13 @@ int main(int argc, char **argv) {
     auto significant_points = extract_significant_gradient_points(cloud, gradients, threshold);
     std::cout << "Extracted " << significant_points->size() << " points with significant gradient magnitudes"
               << " (threshold: " << threshold << ")" << std::endl;
+
+    // Save the filtered point cloud
+    pcl::io::savePCDFile("filtered_cloud.pcd", *significant_points);
+    std::cout << "Saved filtered point cloud to 'filtered_cloud.pcd'" << std::endl;
+
+    // Visualize the original and filtered point clouds
+    visualize_point_clouds(cloud, significant_points);
 
     return 0;
 }
