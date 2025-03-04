@@ -35,7 +35,7 @@ pcl::PointCloud<pcl::IntensityGradient>::Ptr estimate_intensity_gradients(
  * @param intensity_threshold Threshold for feature extraction
  * @return Feature point cloud
  */
-pcl::PointCloud<pcl::PointXYZI>::Ptr extract_feature_points(
+pcl::PointCloud<pcl::PointXYZI>::Ptr extract_intensity_feature_points(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud,
     const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient,
     float intensity_threshold
@@ -49,3 +49,19 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr extract_feature_points(
  * @return Calculated intensity threshold
  */
 float calculate_intensity_threshold(const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient, float ratio_q = 0.02);
+
+/**
+ * Extract clusters from a point cloud using Euclidean Cluster Extraction
+ *
+ * @param cloud Input point cloud
+ * @param cluster_tolerance Distance threshold for clustering
+ * @param min_cluster_size Minimum number of points in a cluster
+ * @param max_cluster_size Maximum number of points in a cluster
+ * @return Vector of point indices for each cluster
+ */
+std::vector<pcl::PointIndices> extract_euclidean_clusters(
+    const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud,
+    float cluster_tolerance,
+    int min_cluster_size = 100,
+    int max_cluster_size = 100000
+);

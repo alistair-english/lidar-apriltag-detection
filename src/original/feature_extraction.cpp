@@ -1,8 +1,11 @@
 #include "feature_extraction.hpp"
+
 #include <cmath>
 #include <memory>
 #include <queue>
 #include <vector>
+
+#include <pcl/segmentation/extract_clusters.h>
 
 pcl::PointCloud<pcl::Normal>::Ptr estimate_normals(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud, float radius) {
 
@@ -60,7 +63,34 @@ float calculate_intensity_threshold(const pcl::PointCloud<pcl::IntensityGradient
     return q.empty() ? 0.0f : q.top();
 }
 
-pcl::PointCloud<pcl::PointXYZI>::Ptr extract_feature_points(
+std::vector<pcl::PointIndices> extract_euclidean_clusters(
+    const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud,
+    float cluster_tolerance,
+    int min_cluster_size,
+    int max_cluster_size
+) {
+    // Create KdTree for searching
+    auto tree = std::make_shared<pcl::search::KdTree<pcl::PointXYZI>>();
+    tree->setInputCloud(cloud);
+
+    // Initialize cluster extraction
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZI> ec;
+
+    // Set parameters
+    ec.setClusterTolerance(cluster_tolerance);
+    ec.setMinClusterSize(min_cluster_size);
+    ec.setMaxClusterSize(max_cluster_size);
+    ec.setSearchMethod(tree);
+    ec.setInputCloud(cloud);
+
+    // Extract clusters
+    ec.extract(cluster_indices);
+
+    return cluster_indices;
+}
+
+pcl::PointCloud<pcl::PointXYZI>::Ptr extract_intensity_feature_points(
     const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud,
     const pcl::PointCloud<pcl::IntensityGradient>::Ptr &gradient,
     float intensity_threshold

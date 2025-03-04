@@ -2,7 +2,7 @@
 #include <ctime>
 #include <float.h>
 #include <iostream>
-#include <queue>
+#include <memory>
 #include <string>
 #include <vector>
 #include <vtkAutoInit.h>
@@ -57,7 +57,6 @@ int main(int argc, char **argv) {
     auto [viewer, viewports] = create_visualizer();
     add_raw_pointcloud(viewer, cloud, viewports.v1);
 
-    // --- extract features ---
     // Estimate the surface normals
     pcl::PointCloud<pcl::Normal>::Ptr cloud_n = estimate_normals(cloud, config.norm_radius);
 
@@ -70,23 +69,13 @@ int main(int argc, char **argv) {
 
     // Extract feature points based on intensity gradient magnitude
     pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_feature =
-        extract_feature_points(cloud, gradient, intensity_threshold);
+        extract_intensity_feature_points(cloud, gradient, intensity_threshold);
+
     add_feature_pointcloud(viewer, intensity_feature, viewports);
 
-    // --- features extracted ---
-
     // Conduct EuclideanCluster on the features
-    pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZI>);
-    tree->setInputCloud(intensity_feature);
-    std::vector<pcl::PointIndices> cluster_indices;
-
-    pcl::EuclideanClusterExtraction<pcl::PointXYZI> ec;
-    ec.setClusterTolerance(config.EuclideanTolerance);
-    ec.setMinClusterSize(100);
-    ec.setMaxClusterSize(100000);
-    ec.setSearchMethod(tree);
-    ec.setInputCloud(intensity_feature);
-    ec.extract(cluster_indices);
+    std::vector<pcl::PointIndices> cluster_indices =
+        extract_euclidean_clusters(intensity_feature, config.EuclideanTolerance, 100, 100000);
 
     std::vector<float> moment_of_inertia;
     std::vector<float> eccentricity;
@@ -103,9 +92,12 @@ int main(int argc, char **argv) {
 
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end();
          ++it) {
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cluster(new pcl::PointCloud<pcl::PointXYZI>);
+
+        auto cluster = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+
         // cluster_counter++;
         // std::cout<<"the number of the cluster is"<<""<<cluster_counter<<'\n';
+
         for (const auto &idx : it->indices)
             cluster->push_back((*intensity_feature)[idx]);
 
@@ -167,16 +159,12 @@ int main(int argc, char **argv) {
             // if (max1/max2<config.ratio_threshold && max2/max1>1/config.ratio_threshold &&
             // config.cuboid_area_min <= (max1*max2) && (max1*max2)<=config.cuboid_area_max){
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr points_in_box{new pcl::PointCloud<pcl::PointXYZI>};
-            pcl::PointCloud<pcl::PointXYZI>::Ptr points_in_box_transformed{new pcl::PointCloud<pcl::PointXYZI>};
-            pcl::PointCloud<pcl::PointXYZI>::Ptr points_in_box_transformed_2{new pcl::PointCloud<pcl::PointXYZI>};
+            auto points_in_box = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+            auto points_in_box_transformed = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+            auto points_in_box_transformed_2 = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
 
             pcl::CropBox<pcl::PointXYZI> box_filter;
-            Eigen::Vector3f minpoint(min_point_OBB.x, min_point_OBB.y, min_point_OBB.z);
-            Eigen::Vector3f maxpoint(max_point_OBB.x, max_point_OBB.y, max_point_OBB.z);
-
             box_filter.setInputCloud(cloud);
-
             box_filter.setRotation(euler_angles);
             box_filter.setTranslation(position);
 
@@ -237,10 +225,10 @@ int main(int argc, char **argv) {
             // Project the ROI to image plane
             //***********************************
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr unique(new pcl::PointCloud<pcl::PointXYZI>);
+            auto unique = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
             pcl::PointCloud<pcl::PointXYZI> &unique_cloud = *unique;
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr unique_i(new pcl::PointCloud<pcl::PointXYZI>);
+            auto unique_i = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
             pcl::PointCloud<pcl::PointXYZI> &unique_cloud_i = *unique_i;
 
             unique_cloud.width = points_in_box_transformed->points.size();
@@ -289,10 +277,10 @@ int main(int argc, char **argv) {
                 }
             }
 
-            pcl::RangeImage::Ptr range_image_ptr(new pcl::RangeImage);
+            auto range_image_ptr = std::make_shared<pcl::RangeImage>();
             pcl::RangeImage &range_image = *range_image_ptr;
 
-            pcl::RangeImage::Ptr range_image_i_ptr(new pcl::RangeImage);
+            auto range_image_i_ptr = std::make_shared<pcl::RangeImage>();
             pcl::RangeImage &range_image_i = *range_image_i_ptr;
 
             float angularResolution = (float)(config.ang_resolution * (M_PI / 180.0f)); //   1.0 degree in radians
@@ -416,8 +404,14 @@ int main(int argc, char **argv) {
             cv::aruco::detectMarkers(gray, dictionary, markerCorners, markerIds, parameters, rejectedCandidates);
             // cv::aruco::detectMarkers(im, dictionary, markerCorners, markerIds,
             // parameters, rejectedCandidates);
-            // cv::Mat outputImage = gray.clone();
-            // cv::aruco::drawDetectedMarkers(outputImage, markerCorners, markerIds);
+
+            // Convert grayscale to RGB for better visualization
+            cv::Mat outputImage;
+            cv::cvtColor(gray, outputImage, cv::COLOR_GRAY2BGR);
+            cv::aruco::drawDetectedMarkers(outputImage, markerCorners, markerIds);
+            std::stringstream ssdetect;
+            ssdetect << "detected_markers" << j << ".png";
+            imwrite(ssdetect.str(), outputImage);
 
             // cout<<"ArUco"<<markerIds.at(0)<<"\n";
 
@@ -444,9 +438,7 @@ int main(int argc, char **argv) {
                                 )) {
                                 if (range_image.isObserved(
                                         round(markerCorners.at(l)[ll].x), round(markerCorners.at(l)[ll].y - mm)
-                                    ))
-
-                                {
+                                    )) {
 
                                     range_image.calculate3DPoint(
                                         round(markerCorners.at(l)[ll].x),
@@ -477,7 +469,6 @@ int main(int argc, char **argv) {
                                     break;
 
                                 } // uppers point
-
                             } // down point
 
                         } // nearest 4 points
