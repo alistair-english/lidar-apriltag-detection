@@ -2,6 +2,7 @@
 
 #include <pcl/common/common.h>
 
+#include "euclidean_clustering.hpp"
 #include "intensity_gradient_filtering.hpp"
 #include "pointcloud.hpp"
 #include "visualisation.hpp"
@@ -13,7 +14,6 @@ void printUsage(const char *programName) {
 }
 
 void print_cloud_bounds(const PointCloud::Ptr &cloud) {
-    // Calculate and print the bounds of the point cloud
     Eigen::Vector4f min_pt, max_pt;
     pcl::getMinMax3D(*cloud, min_pt, max_pt);
     std::cout << "Point cloud bounds:" << std::endl;
@@ -22,7 +22,6 @@ void print_cloud_bounds(const PointCloud::Ptr &cloud) {
     std::cout << "  Z: [" << min_pt[2] << ", " << max_pt[2] << "]" << std::endl;
 }
 
-// Parse command line arguments
 struct ProgramArgs {
     std::string pcd_file_path;
     float scale = 1.0f;
@@ -32,7 +31,6 @@ struct ProgramArgs {
 ProgramArgs parse_arguments(int argc, char **argv) {
     ProgramArgs args;
 
-    // Check if a file path was provided
     if (argc < 2 || argc > 3) {
         printUsage(argv[0]);
         return args;
@@ -40,7 +38,6 @@ ProgramArgs parse_arguments(int argc, char **argv) {
 
     args.pcd_file_path = argv[1];
 
-    // Parse scale if provided
     if (argc == 3) {
         try {
             args.scale = std::stof(argv[2]);
@@ -59,7 +56,6 @@ ProgramArgs parse_arguments(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-    // Parse command line arguments
     ProgramArgs args = parse_arguments(argc, argv);
     if (!args.valid) {
         return 1;
@@ -76,28 +72,31 @@ int main(int argc, char **argv) {
 
     std::cout << "Successfully loaded point cloud with " << cloud->size() << " points." << std::endl;
 
-    // Print the bounds of the loaded point cloud
     print_cloud_bounds(cloud);
 
-    // Estimate surface normals
     const auto normals = estimate_normals(cloud);
     std::cout << "Estimated " << normals->size() << " surface normals." << std::endl;
 
-    // Estimate intensity gradients
     const auto gradients = estimate_intensity_gradient(cloud, normals);
     std::cout << "Estimated " << gradients->size() << " intensity gradients." << std::endl;
 
-    // Calculate threshold for significant gradients
     float threshold = calculate_intensity_threshold(gradients);
     std::cout << "Calculated intensity gradient threshold: " << threshold << std::endl;
 
-    // Extract points with significant gradient magnitudes
     auto significant_points = extract_significant_gradient_points(cloud, gradients, threshold);
     std::cout << "Extracted " << significant_points->size() << " points with significant gradient magnitudes"
               << " (threshold: " << threshold << ")" << std::endl;
 
-    // Visualize the original and filtered point clouds
-    visualize_point_clouds(cloud, significant_points);
+    auto clusters = extract_euclidean_clusters(significant_points, 0.06, 100, 25000);
+    std::cout << "Found " << clusters.size() << " clusters" << std::endl;
+
+    auto [viewer, viewports] = create_visualizer();
+    add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
+    add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
+    visualize_clusters(viewer, clusters, viewports.v2);
+
+    std::cout << "Press 'q' to exit visualization..." << std::endl;
+    viewer->spin();
 
     return 0;
 }

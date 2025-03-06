@@ -3,11 +3,16 @@
 #include "pointcloud.hpp"
 #include <memory>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <tuple>
+#include <vector>
 
-// Create a PCL visualizer with two viewports
-std::shared_ptr<pcl::visualization::PCLVisualizer> create_visualizer();
+struct Viewports {
+    int v1;
+    int v2;
+};
 
-// Add point cloud to the visualizer with custom color
+std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer();
+
 void add_point_cloud(
     std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
     const PointCloud::Ptr &cloud,
@@ -19,7 +24,6 @@ void add_point_cloud(
     double point_size = 1.0
 );
 
-// Add point cloud to the visualizer with intensity-based coloring
 void add_point_cloud_intensity(
     std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
     const PointCloud::Ptr &cloud,
@@ -28,5 +32,15 @@ void add_point_cloud_intensity(
     double point_size = 1.0
 );
 
-// Visualize original and filtered point clouds
-void visualize_point_clouds(const PointCloud::Ptr &original_cloud, const PointCloud::Ptr &filtered_cloud);
+/**
+ * @brief Visualize clusters with different colors
+ *
+ * @param viewer PCL visualizer
+ * @param clusters Vector of point cloud clusters
+ * @param viewport_id Viewport ID for visualization
+ */
+void visualize_clusters(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const std::vector<PointCloud::Ptr> &clusters,
+    int viewport_id
+);
