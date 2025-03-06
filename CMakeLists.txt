@@ -21,5 +21,8 @@ add_definitions(${PCL_DEFINITIONS})
 add_executable(tag_detection src/main.cpp src/intensity_gradient_filtering.cpp src/visualisation.cpp)
 target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
+add_executable(create_markers src/main_create_markers.cpp)
+target_link_libraries(create_markers ${OpenCV_LIBS})
+
 # # Copy config file to build directory if it exists if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config.yaml")
 # configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.yaml ${CMAKE_CURRENT_BINARY_DIR}/config.yaml COPYONLY) endif()
