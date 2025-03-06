@@ -1,5 +1,4 @@
 #include "visualisation.hpp"
-#include <iostream>
 #include <random>
 
 std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer() {
@@ -70,5 +69,45 @@ void visualize_clusters(
         viewer->addPointCloud<Point>(clusters[i], id, viewport_id);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, id, viewport_id);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, id, viewport_id);
+    }
+}
+
+void add_oriented_bounding_box(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const OrientedBoundingBox &obb,
+    const std::string &id,
+    int viewport_id,
+    double r,
+    double g,
+    double b
+) {
+    viewer->addCube(
+        obb.position, obb.orientation, obb.dimensions[0], obb.dimensions[1], obb.dimensions[2], id, viewport_id
+    );
+
+    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, id, viewport_id);
+
+    viewer->setShapeRenderingProperties(
+        pcl::visualization::PCL_VISUALIZER_REPRESENTATION,
+        pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME,
+        id,
+        viewport_id
+    );
+
+    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2.0, id, viewport_id);
+}
+
+void visualize_oriented_bounding_boxes(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const std::vector<OrientedBoundingBox> &boxes,
+    int viewport_id,
+    double r,
+    double g,
+    double b
+) {
+    // Add each oriented bounding box
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        std::string obb_id = "obb_" + std::to_string(i);
+        add_oriented_bounding_box(viewer, boxes[i], obb_id, viewport_id, r, g, b);
     }
 }
