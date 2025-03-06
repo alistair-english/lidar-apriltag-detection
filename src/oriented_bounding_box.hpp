@@ -35,14 +35,14 @@ std::vector<OrientedBoundingBox> calculate_oriented_bounding_boxes(const std::ve
  * @brief Filter oriented bounding boxes based on their properties
  *
  * @param boxes Vector of oriented bounding boxes
- * @param min_dimension Minimum dimension threshold for any side of the box
- * @param max_dimension Maximum dimension threshold for any side of the box
+ * @param min_diagonal Minimum diagonal length threshold
+ * @param max_diagonal Maximum diagonal length threshold
  * @param max_aspect_ratio Maximum aspect ratio between largest and smallest dimension
  * @return std::vector<OrientedBoundingBox> Filtered bounding boxes
  */
 std::vector<OrientedBoundingBox> filter_obbs(
     const std::vector<OrientedBoundingBox> &boxes,
-    float min_dimension = 0.01,
-    float max_dimension = 1.0,
+    float min_diagonal = 0.02,
+    float max_diagonal = 1.0,
     float max_aspect_ratio = 10.0
 );

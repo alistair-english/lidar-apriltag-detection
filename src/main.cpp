@@ -91,21 +91,18 @@ int main(int argc, char **argv) {
     auto clusters = extract_euclidean_clusters(significant_points, 0.06, 100, 25000);
     std::cout << "Found " << clusters.size() << " clusters" << std::endl;
 
-    // Calculate oriented bounding boxes for all clusters
     auto boxes = calculate_oriented_bounding_boxes(clusters);
     std::cout << "Calculated " << boxes.size() << " oriented bounding boxes" << std::endl;
 
-    // Filter bounding boxes based on their properties
-    auto filtered_boxes = filter_obbs(boxes, 0.01, 0.5, 5.0);
+    auto filtered_boxes = filter_obbs(boxes, 0.3, 1.0, 1.5);
     std::cout << "After OBB filtering: " << filtered_boxes.size() << " boxes remain" << std::endl;
 
     auto [viewer, viewports] = create_visualizer();
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
     add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
 
-    // Visualize clusters and OBBs separately
     visualize_clusters(viewer, clusters, viewports.v2);
-    visualize_oriented_bounding_boxes(viewer, boxes, viewports.v2);
+    visualize_oriented_bounding_boxes(viewer, filtered_boxes, viewports.v2);
 
     std::cout << "Press 'q' to exit visualization..." << std::endl;
     viewer->spin();

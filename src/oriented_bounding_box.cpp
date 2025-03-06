@@ -78,25 +78,34 @@ std::vector<OrientedBoundingBox> calculate_oriented_bounding_boxes(const std::ve
 }
 
 std::vector<OrientedBoundingBox> filter_obbs(
-    const std::vector<OrientedBoundingBox> &boxes, float min_dimension, float max_dimension, float max_aspect_ratio
+    const std::vector<OrientedBoundingBox> &boxes, float min_diagonal, float max_diagonal, float max_aspect_ratio
 ) {
-
     std::vector<OrientedBoundingBox> filtered_boxes;
 
     for (const auto &obb : boxes) {
-        // Check minimum and maximum dimension constraints
-        float min_dim = std::min({obb.dimensions[0], obb.dimensions[1], obb.dimensions[2]});
-        float max_dim = std::max({obb.dimensions[0], obb.dimensions[1], obb.dimensions[2]});
+        // Calculate diagonal length of the bounding box
+        float diagonal = std::sqrt(
+            obb.dimensions[0] * obb.dimensions[0] + obb.dimensions[1] * obb.dimensions[1] +
+            obb.dimensions[2] * obb.dimensions[2]
+        );
+
+        // Sort dimensions to find the two largest
+        std::array<float, 3> dims = {obb.dimensions[0], obb.dimensions[1], obb.dimensions[2]};
+        std::sort(dims.begin(), dims.end());
+
+        // Calculate aspect ratio using the two largest dimensions
+        float larger_dim = dims[2]; // Largest dimension
+        float middle_dim = dims[1]; // Second largest dimension
 
         // Calculate aspect ratio
-        float aspect_ratio = max_dim / (min_dim > 0 ? min_dim : 0.001f); // Avoid division by zero
+        float aspect_ratio = larger_dim / (middle_dim > 0 ? middle_dim : 0.001f); // Avoid division by zero
 
         // Apply filters
-        bool passes_min_dim = min_dim >= min_dimension;
-        bool passes_max_dim = max_dim <= max_dimension;
+        bool passes_min_diagonal = diagonal >= min_diagonal;
+        bool passes_max_diagonal = diagonal <= max_diagonal;
         bool passes_aspect_ratio = aspect_ratio <= max_aspect_ratio;
 
-        if (passes_min_dim && passes_max_dim && passes_aspect_ratio) {
+        if (passes_min_diagonal && passes_max_diagonal && passes_aspect_ratio) {
             filtered_boxes.push_back(obb);
         }
     }
