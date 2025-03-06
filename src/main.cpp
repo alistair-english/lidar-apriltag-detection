@@ -97,12 +97,19 @@ int main(int argc, char **argv) {
     auto filtered_boxes = filter_obbs(boxes, 0.3, 1.0, 1.5);
     std::cout << "After OBB filtering: " << filtered_boxes.size() << " boxes remain" << std::endl;
 
+    auto points_in_boxes = extract_points_in_obbs(cloud, filtered_boxes);
+
     auto [viewer, viewports] = create_visualizer();
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
     add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
 
     visualize_clusters(viewer, clusters, viewports.v2);
     visualize_oriented_bounding_boxes(viewer, filtered_boxes, viewports.v2);
+
+    for (size_t i = 0; i < points_in_boxes.size(); ++i) {
+        std::string id = "box_points_" + std::to_string(i);
+        add_point_cloud_intensity(viewer, points_in_boxes[i], id, viewports.v3, 3.0);
+    }
 
     std::cout << "Press 'q' to exit visualization..." << std::endl;
     viewer->spin();

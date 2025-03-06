@@ -5,15 +5,18 @@ std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create
     auto viewer = std::make_shared<pcl::visualization::PCLVisualizer>("Point Cloud Viewer");
     Viewports viewports;
 
-    // Create two viewports
-    viewer->createViewPort(0.0, 0.0, 0.5, 1.0, viewports.v1);
-    viewer->createViewPort(0.5, 0.0, 1.0, 1.0, viewports.v2);
+    // Create three viewports
+    viewer->createViewPort(0.0, 0.0, 0.33, 1.0, viewports.v1);
+    viewer->createViewPort(0.33, 0.0, 0.67, 1.0, viewports.v2);
+    viewer->createViewPort(0.67, 0.0, 1.0, 1.0, viewports.v3);
 
     viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v1);
     viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v2);
+    viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v3);
 
     viewer->addText("Original Point Cloud", 10, 10, 1.0, 1.0, 1.0, "v1_text", viewports.v1);
     viewer->addText("Filtered Point Cloud", 10, 10, 1.0, 1.0, 1.0, "v2_text", viewports.v2);
+    viewer->addText("Points in OBBs", 10, 10, 1.0, 1.0, 1.0, "v3_text", viewports.v3);
 
     return {viewer, viewports};
 }

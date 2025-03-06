@@ -10,6 +10,7 @@
 struct Viewports {
     int v1;
     int v2;
+    int v3;
 };
 
 std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer();

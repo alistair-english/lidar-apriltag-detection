@@ -112,3 +112,46 @@ std::vector<OrientedBoundingBox> filter_obbs(
 
     return filtered_boxes;
 }
+
+PointCloud::Ptr extract_points_in_obb(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb) {
+    auto result = std::make_shared<PointCloud>();
+
+    if (cloud->empty()) {
+        return result;
+    }
+
+    // Create transformation matrix to transform points to OBB's local coordinate system
+    Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+    transform.block<3, 3>(0, 0) = obb.rotation_matrix.transpose();
+    transform.block<3, 1>(0, 3) = -obb.rotation_matrix.transpose() * obb.position;
+
+    // Half dimensions of the box
+    Eigen::Vector3f half_dimensions = obb.dimensions * 0.5f;
+
+    // Check each point
+    for (const auto &point : *cloud) {
+        // Transform point to OBB's local coordinate system
+        Eigen::Vector4f pt(point.x, point.y, point.z, 1.0f);
+        Eigen::Vector4f transformed_pt = transform * pt;
+
+        // Check if point is inside the box
+        if (std::abs(transformed_pt[0]) <= half_dimensions[0] && std::abs(transformed_pt[1]) <= half_dimensions[1] &&
+            std::abs(transformed_pt[2]) <= half_dimensions[2]) {
+            result->push_back(point);
+        }
+    }
+
+    return result;
+}
+
+std::vector<PointCloud::Ptr>
+extract_points_in_obbs(const PointCloud::Ptr &cloud, const std::vector<OrientedBoundingBox> &boxes) {
+    std::vector<PointCloud::Ptr> result;
+    result.reserve(boxes.size());
+
+    for (const auto &box : boxes) {
+        result.push_back(extract_points_in_obb(cloud, box));
+    }
+
+    return result;
+}

@@ -46,3 +46,22 @@ std::vector<OrientedBoundingBox> filter_obbs(
     float max_diagonal = 1.0,
     float max_aspect_ratio = 10.0
 );
+
+/**
+ * @brief Extract points from a point cloud that fall within an oriented bounding box
+ *
+ * @param cloud Input point cloud
+ * @param obb The oriented bounding box
+ * @return PointCloud::Ptr Cloud containing only points inside the box
+ */
+PointCloud::Ptr extract_points_in_obb(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb);
+
+/**
+ * @brief Extract points from a point cloud that fall within each oriented bounding box
+ *
+ * @param cloud Input point cloud
+ * @param boxes Vector of oriented bounding boxes
+ * @return std::vector<PointCloud::Ptr> Vector of point clouds, one for each box
+ */
+std::vector<PointCloud::Ptr>
+extract_points_in_obbs(const PointCloud::Ptr &cloud, const std::vector<OrientedBoundingBox> &boxes);
