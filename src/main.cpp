@@ -7,6 +7,7 @@
 #include "euclidean_clustering.hpp"
 #include "image_projection.hpp"
 #include "intensity_gradient_filtering.hpp"
+#include "marker_detection.hpp"
 #include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
 #include "visualisation.hpp"
@@ -120,19 +121,36 @@ int main(int argc, char **argv) {
 
         const auto transformed_cloud = transform_cloud_for_imaging(points_in_box, obb);
         const auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
-        const auto intensity_image =
-            create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
+        auto intensity_image = create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
 
         const auto range_cv_image = convert_range_image_to_cv_mat(range_image);
 
+        cv::Mat threshold_intensity_image;
+        cv::threshold(intensity_image, threshold_intensity_image, 10, 255, cv::THRESH_BINARY);
+
+        // Detect ArUco markers in the blurred intensity image
+        std::vector<MarkerDetection> detections = detect_markers(threshold_intensity_image, "DICT_APRILTAG_36h11");
+
+        // Draw markers on the intensity image
+        cv::Mat marked_image = draw_markers(intensity_image, detections);
+
+        // Print marker detection results
+        std::cout << "Box " << i << " marker detections:" << std::endl;
+        for (const auto &detection : detections) {
+            std::cout << "  Marker ID: " << detection.id << std::endl;
+        }
+
+        // Save images
         cv::imwrite("range_image_" + std::to_string(i) + ".png", range_cv_image);
         cv::imwrite("intensity_image_" + std::to_string(i) + ".png", intensity_image);
+        cv::imwrite("threshold_intensity_image_" + std::to_string(i) + ".png", threshold_intensity_image);
+        cv::imwrite("marker_detection_" + std::to_string(i) + ".png", marked_image);
 
         i++;
     }
 
-    std::cout << "Press 'q' to exit visualization..." << std::endl;
-    viewer->spin();
+    // std::cout << "Press 'q' to exit visualization..." << std::endl;
+    // viewer->spin();
 
     return 0;
 }
