@@ -1,5 +1,7 @@
+#include <cstddef>
 #include <iostream>
 
+#include <pcl/common/angles.h>
 #include <pcl/common/common.h>
 
 #include "euclidean_clustering.hpp"
@@ -63,6 +65,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    auto [viewer, viewports] = create_visualizer();
+
     std::cout << "Loading point cloud from: " << args.pcd_file_path << std::endl;
     std::cout << "Using scale factor: " << args.scale << std::endl;
 
@@ -75,6 +79,8 @@ int main(int argc, char **argv) {
     std::cout << "Successfully loaded point cloud with " << cloud->size() << " points." << std::endl;
 
     print_cloud_bounds(cloud);
+
+    add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
 
     const auto normals = estimate_normals(cloud);
     std::cout << "Estimated " << normals->size() << " surface normals." << std::endl;
@@ -89,8 +95,12 @@ int main(int argc, char **argv) {
     std::cout << "Extracted " << significant_points->size() << " points with significant gradient magnitudes"
               << " (threshold: " << threshold << ")" << std::endl;
 
+    add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
+
     auto clusters = extract_euclidean_clusters(significant_points, 0.06, 100, 25000);
     std::cout << "Found " << clusters.size() << " clusters" << std::endl;
+
+    visualize_clusters(viewer, clusters, viewports.v2);
 
     auto boxes = calculate_oriented_bounding_boxes(clusters);
     std::cout << "Calculated " << boxes.size() << " oriented bounding boxes" << std::endl;
@@ -98,37 +108,27 @@ int main(int argc, char **argv) {
     auto filtered_boxes = filter_obbs(boxes, 0.3, 1.0, 1.5);
     std::cout << "After OBB filtering: " << filtered_boxes.size() << " boxes remain" << std::endl;
 
-    auto points_in_boxes = extract_points_in_obbs(cloud, filtered_boxes);
-
-    auto range_and_intensity_images = create_range_and_intensity_images(points_in_boxes, filtered_boxes, 0.5);
-
-    for (size_t i = 0; i < range_and_intensity_images.size(); ++i) {
-        const auto &[range_image, intensity_image] = range_and_intensity_images[i];
-
-        if (range_image && !range_image->empty()) {
-            cv::Mat range_cv_image = convert_range_image_to_cv_mat(range_image);
-            std::string range_filename = "range_image_" + std::to_string(i) + ".png";
-            cv::imwrite(range_filename, range_cv_image);
-            std::cout << "Saved range image to: " << range_filename << std::endl;
-        }
-
-        if (!intensity_image.empty()) {
-            std::string intensity_filename = "intensity_image_" + std::to_string(i) + ".png";
-            cv::imwrite(intensity_filename, intensity_image);
-            std::cout << "Saved intensity image to: " << intensity_filename << std::endl;
-        }
-    }
-
-    auto [viewer, viewports] = create_visualizer();
-    add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
-    add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
-
-    visualize_clusters(viewer, clusters, viewports.v2);
     visualize_oriented_bounding_boxes(viewer, filtered_boxes, viewports.v2);
 
-    for (size_t i = 0; i < points_in_boxes.size(); ++i) {
-        std::string id = "box_points_" + std::to_string(i);
-        add_point_cloud_intensity(viewer, points_in_boxes[i], id, viewports.v3, 3.0);
+    float angular_resolution = pcl::deg2rad(0.3);
+
+    size_t i = 0;
+    for (const auto &obb : filtered_boxes) {
+        const auto points_in_box = extract_points_in_obb(cloud, obb);
+
+        add_point_cloud_intensity(viewer, points_in_box, "box_points_" + std::to_string(i), viewports.v3, 3.0);
+
+        const auto transformed_cloud = transform_cloud_for_imaging(points_in_box, obb);
+        const auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
+        const auto intensity_image =
+            create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
+
+        const auto range_cv_image = convert_range_image_to_cv_mat(range_image);
+
+        cv::imwrite("range_image_" + std::to_string(i) + ".png", range_cv_image);
+        cv::imwrite("intensity_image_" + std::to_string(i) + ".png", intensity_image);
+
+        i++;
     }
 
     std::cout << "Press 'q' to exit visualization..." << std::endl;

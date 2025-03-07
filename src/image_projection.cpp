@@ -201,28 +201,3 @@ cv::Mat create_intensity_image_from_cloud(
 
     return intensity_image;
 }
-
-std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> create_range_and_intensity_images(
-    const std::vector<PointCloud::Ptr> &clouds, const std::vector<OrientedBoundingBox> &boxes, float angular_resolution
-) {
-    std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> range_images;
-
-    if (clouds.size() != boxes.size()) {
-        std::cerr << "Error: Number of clouds (" << clouds.size() << ") does not match number of boxes ("
-                  << boxes.size() << ")" << std::endl;
-        return range_images;
-    }
-
-    angular_resolution = pcl::deg2rad(angular_resolution);
-
-    range_images.reserve(clouds.size());
-
-    for (size_t i = 0; i < clouds.size(); ++i) {
-        auto transformed_cloud = transform_cloud_for_imaging(clouds[i], boxes[i]);
-        auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
-        auto intensity_image = create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
-        range_images.push_back(std::make_tuple(range_image, intensity_image));
-    }
-
-    return range_images;
-}

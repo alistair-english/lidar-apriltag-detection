@@ -143,15 +143,3 @@ PointCloud::Ptr extract_points_in_obb(const PointCloud::Ptr &cloud, const Orient
 
     return result;
 }
-
-std::vector<PointCloud::Ptr>
-extract_points_in_obbs(const PointCloud::Ptr &cloud, const std::vector<OrientedBoundingBox> &boxes) {
-    std::vector<PointCloud::Ptr> result;
-    result.reserve(boxes.size());
-
-    for (const auto &box : boxes) {
-        result.push_back(extract_points_in_obb(cloud, box));
-    }
-
-    return result;
-}
