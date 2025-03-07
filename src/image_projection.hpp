@@ -23,7 +23,7 @@ PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const 
  * @param angular_resolution Angular resolution of the range image in degrees
  * @return pcl::RangeImage::Ptr The created range image
  */
-pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution = 0.5f);
+pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution);
 
 /**
  * @brief Create range images from multiple point clouds
@@ -35,10 +35,8 @@ pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud,
  * @param max_angle_height Maximum vertical view angle in degrees
  * @return std::vector<pcl::RangeImage::Ptr> Vector of range images
  */
-std::vector<std::tuple<pcl::RangeImage::Ptr, pcl::RangeImage::Ptr>> create_range_images(
-    const std::vector<PointCloud::Ptr> &clouds,
-    const std::vector<OrientedBoundingBox> &boxes,
-    float angular_resolution = 0.5f
+std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> create_range_and_intensity_images(
+    const std::vector<PointCloud::Ptr> &clouds, const std::vector<OrientedBoundingBox> &boxes, float angular_resolution
 );
 
 /**
@@ -56,3 +54,14 @@ PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud);
  * @return cv::Mat Colored OpenCV image
  */
 cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image);
+
+/**
+ * @brief Create an intensity image from a point cloud
+ *
+ * @param cloud Input point cloud
+ * @param angular_resolution Angular resolution of the image in degrees
+ * @param max_angle_width Maximum horizontal view angle in degrees
+ * @param max_angle_height Maximum vertical view angle in degrees
+ * @return cv::Mat Grayscale OpenCV image representing intensity values
+ */
+cv::Mat create_intensity_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution);

@@ -100,10 +100,10 @@ int main(int argc, char **argv) {
 
     auto points_in_boxes = extract_points_in_obbs(cloud, filtered_boxes);
 
-    auto range_images = create_range_images(points_in_boxes, filtered_boxes, 0.5);
+    auto range_and_intensity_images = create_range_and_intensity_images(points_in_boxes, filtered_boxes, 0.5);
 
-    for (size_t i = 0; i < range_images.size(); ++i) {
-        const auto &[range_image, intensity_image] = range_images[i];
+    for (size_t i = 0; i < range_and_intensity_images.size(); ++i) {
+        const auto &[range_image, intensity_image] = range_and_intensity_images[i];
 
         if (range_image && !range_image->empty()) {
             cv::Mat range_cv_image = convert_range_image_to_cv_mat(range_image);
@@ -112,10 +112,9 @@ int main(int argc, char **argv) {
             std::cout << "Saved range image to: " << range_filename << std::endl;
         }
 
-        if (intensity_image && !intensity_image->empty()) {
-            cv::Mat intensity_cv_image = convert_range_image_to_cv_mat(intensity_image);
+        if (!intensity_image.empty()) {
             std::string intensity_filename = "intensity_image_" + std::to_string(i) + ".png";
-            cv::imwrite(intensity_filename, intensity_cv_image);
+            cv::imwrite(intensity_filename, intensity_image);
             std::cout << "Saved intensity image to: " << intensity_filename << std::endl;
         }
     }
