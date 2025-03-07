@@ -3,7 +3,6 @@
 #include <pcl/common/common.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/range_image/range_image.h>
-#include <pcl/visualization/common/float_image_utils.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/range_image_visualizer.h>
 #include <tuple>
@@ -111,137 +110,21 @@ pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud,
     return range_image;
 }
 
-std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> create_range_and_intensity_images(
-    const std::vector<PointCloud::Ptr> &clouds, const std::vector<OrientedBoundingBox> &boxes, float angular_resolution
+cv::Mat create_intensity_image_from_cloud(
+    const PointCloud::Ptr &cloud, float angular_resolution, const pcl::RangeImage::Ptr &pre_computed_range_image
 ) {
-    std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> range_images;
-
-    if (clouds.size() != boxes.size()) {
-        std::cerr << "Error: Number of clouds (" << clouds.size() << ") does not match number of boxes ("
-                  << boxes.size() << ")" << std::endl;
-        return range_images;
-    }
-
-    angular_resolution = pcl::deg2rad(angular_resolution);
-
-    range_images.reserve(clouds.size());
-
-    for (size_t i = 0; i < clouds.size(); ++i) {
-        auto transformed_cloud = transform_cloud_for_imaging(clouds[i], boxes[i]);
-
-        range_images.push_back(std::make_tuple(
-            create_range_image_from_cloud(transformed_cloud, angular_resolution),
-            create_intensity_image_from_cloud(transformed_cloud, angular_resolution)
-        ));
-    }
-
-    return range_images;
-}
-
-PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud) {
-    if (cloud->empty()) {
-        std::cerr << "Warning: Empty cloud passed to create_intensity_scaled_cloud" << std::endl;
-        return std::make_shared<PointCloud>();
-    }
-
-    auto scaled_cloud = std::make_shared<PointCloud>();
-    scaled_cloud->reserve(cloud->size());
-
-    for (const auto &point : *cloud) {
-        // Skip points with zero intensity
-        if (point.intensity <= 0.0f) {
-            continue;
-        }
-
-        // Create a new point with coordinates scaled by intensity
-        Point scaled_point;
-        scaled_point.x = point.x * point.intensity;
-        scaled_point.y = point.y * point.intensity;
-        scaled_point.z = point.z * point.intensity;
-        scaled_point.intensity = point.intensity; // Keep the original intensity
-
-        scaled_cloud->push_back(scaled_point);
-    }
-
-    // Copy the header information
-    scaled_cloud->header = cloud->header;
-    scaled_cloud->width = scaled_cloud->size();
-    scaled_cloud->height = 1;       // Unorganized point cloud
-    scaled_cloud->is_dense = false; // May contain invalid points
-
-    return scaled_cloud;
-}
-
-cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image) {
-    if (!range_image || range_image->empty()) {
-        std::cerr << "Warning: Empty range image passed to convert_range_image_to_cv_mat" << std::endl;
-        return cv::Mat();
-    }
-
-    // Get the dimensions of the range image
-    int width = range_image->width;
-    int height = range_image->height;
-
-    // Create an OpenCV matrix to hold the colored image (BGR format)
-    cv::Mat cv_image(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
-
-    // Find min and max range values for normalization
-    float min_range = std::numeric_limits<float>::max();
-    float max_range = -std::numeric_limits<float>::max();
-
-    // First pass to find min and max values
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            float range = range_image->getPoint(x, y).range;
-
-            // Skip invalid points (NaN or infinity)
-            if (!std::isfinite(range) || range < 0) {
-                continue;
-            }
-
-            min_range = std::min(min_range, range);
-            max_range = std::max(max_range, range);
-        }
-    }
-
-    // If we couldn't find valid min/max values, return empty image
-    if (min_range >= max_range) {
-        std::cerr << "Warning: Could not determine valid range bounds in range image" << std::endl;
-        return cv_image;
-    }
-
-    // Second pass to normalize and colorize
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            float range = range_image->getPoint(x, y).range;
-
-            // Skip invalid points
-            if (!std::isfinite(range) || range < 0) {
-                continue;
-            }
-
-            // Normalize the range value to [0, 1]
-            float normalized_range = (range - min_range) / (max_range - min_range);
-
-            // Get color for the normalized value using PCL's utility
-            uint8_t r, g, b;
-            pcl::visualization::FloatImageUtils::getColorForFloat(normalized_range, r, g, b);
-
-            // OpenCV uses BGR format
-            cv_image.at<cv::Vec3b>(y, x) = cv::Vec3b(b, g, r);
-        }
-    }
-
-    return cv_image;
-}
-
-cv::Mat create_intensity_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution) {
     if (cloud->empty()) {
         std::cerr << "Warning: Empty cloud passed to create_intensity_image_from_cloud" << std::endl;
         return cv::Mat();
     }
 
-    auto range_image = create_range_image_from_cloud(cloud, angular_resolution);
+    pcl::RangeImage::Ptr range_image;
+
+    if (pre_computed_range_image != nullptr) {
+        range_image = pre_computed_range_image;
+    } else {
+        range_image = create_range_image_from_cloud(cloud, angular_resolution);
+    }
 
     // Get dimensions
     int width = range_image->width;
@@ -317,4 +200,29 @@ cv::Mat create_intensity_image_from_cloud(const PointCloud::Ptr &cloud, float an
     }
 
     return intensity_image;
+}
+
+std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> create_range_and_intensity_images(
+    const std::vector<PointCloud::Ptr> &clouds, const std::vector<OrientedBoundingBox> &boxes, float angular_resolution
+) {
+    std::vector<std::tuple<pcl::RangeImage::Ptr, cv::Mat>> range_images;
+
+    if (clouds.size() != boxes.size()) {
+        std::cerr << "Error: Number of clouds (" << clouds.size() << ") does not match number of boxes ("
+                  << boxes.size() << ")" << std::endl;
+        return range_images;
+    }
+
+    angular_resolution = pcl::deg2rad(angular_resolution);
+
+    range_images.reserve(clouds.size());
+
+    for (size_t i = 0; i < clouds.size(); ++i) {
+        auto transformed_cloud = transform_cloud_for_imaging(clouds[i], boxes[i]);
+        auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
+        auto intensity_image = create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
+        range_images.push_back(std::make_tuple(range_image, intensity_image));
+    }
+
+    return range_images;
 }
