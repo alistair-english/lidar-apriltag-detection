@@ -3,6 +3,7 @@
 #include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
 #include <memory>
+#include <pcl/range_image/range_image.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <tuple>
 #include <vector>
@@ -85,4 +86,20 @@ void visualize_oriented_bounding_boxes(
     double r = 1.0,
     double g = 1.0,
     double b = 1.0
+);
+
+/**
+ * @brief Save a range image as a PNG file
+ *
+ * @param range_image The range image to save
+ * @param filename Output filename (should end with .png)
+ * @param min_range Minimum range value for normalization (if negative, auto-detected)
+ * @param max_range Maximum range value for normalization (if negative, auto-detected)
+ * @return bool True if the image was successfully saved
+ */
+bool save_range_image_as_png(
+    const pcl::RangeImage::Ptr &range_image,
+    const std::string &filename,
+    float min_range = -1.0f,
+    float max_range = -1.0f
 );

@@ -1,60 +1,49 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
-#include <pcl/range_image/range_image.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/visualization/range_image_visualizer.h>
-#include <string>
-
+#include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
+#include <pcl/range_image/range_image.h>
+#include <pcl/range_image/range_image_planar.h>
 
 /**
- * @brief Create a range image from a point cloud
+ * @brief Transform a point cloud for range image creation
  *
  * @param cloud Input point cloud
- * @param angular_resolution_x Angular resolution in x direction (in degrees)
- * @param angular_resolution_y Angular resolution in y direction (in degrees)
+ * @param obb Oriented bounding box of the point cloud (used to position the camera)
+ * @return PointCloud::Ptr Transformed point cloud ready for range image creation
+ */
+PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb);
+
+/**
+ * @brief Create a range image from a point cloud using the oriented bounding box to position the camera
+ *
+ * @param cloud Input point cloud
+ * @param obb Oriented bounding box of the point cloud (used to position the camera)
+ * @param angular_resolution Angular resolution of the range image in degrees
  * @return pcl::RangeImage::Ptr The created range image
  */
-pcl::RangeImage::Ptr
-create_range_image(const PointCloud::Ptr &cloud, float angular_resolution_x = 0.5f, float angular_resolution_y = 0.5f);
+pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution = 0.5f);
 
 /**
- * @brief Create range images for multiple point clouds
+ * @brief Create range images from multiple point clouds
  *
  * @param clouds Vector of point clouds
- * @param angular_resolution_x Angular resolution in x direction (in degrees)
- * @param angular_resolution_y Angular resolution in y direction (in degrees)
- * @return std::vector<pcl::RangeImage::Ptr> Vector of created range images
+ * @param boxes Vector of oriented bounding boxes corresponding to the clouds
+ * @param angular_resolution Angular resolution of the range image in degrees
+ * @param max_angle_width Maximum horizontal view angle in degrees
+ * @param max_angle_height Maximum vertical view angle in degrees
+ * @return std::vector<pcl::RangeImage::Ptr> Vector of range images
  */
-std::vector<pcl::RangeImage::Ptr> create_range_images(
-    const std::vector<PointCloud::Ptr> &clouds, float angular_resolution_x = 0.5f, float angular_resolution_y = 0.5f
+std::vector<std::tuple<pcl::RangeImage::Ptr, pcl::RangeImage::Ptr>> create_range_images(
+    const std::vector<PointCloud::Ptr> &clouds,
+    const std::vector<OrientedBoundingBox> &boxes,
+    float angular_resolution = 0.5f
 );
 
 /**
- * @brief Convert a PCL range image to an OpenCV matrix
+ * @brief Create a new point cloud with points scaled by their intensity values
  *
- * @param range_image Input range image
- * @return cv::Mat OpenCV matrix representation of the range image
+ * @param cloud Input point cloud
+ * @return PointCloud::Ptr New point cloud with points scaled by intensity
  */
-cv::Mat range_image_to_opencv(const pcl::RangeImage::Ptr &range_image);
-
-/**
- * @brief Save a range image as a PNG file
- *
- * @param range_image Input range image
- * @param filename Output filename
- * @return bool True if successful, false otherwise
- */
-bool save_range_image(const pcl::RangeImage::Ptr &range_image, const std::string &filename);
-
-/**
- * @brief Save multiple range images as PNG files
- *
- * @param range_images Vector of range images
- * @param base_filename Base filename (will be appended with index)
- * @return std::vector<std::string> Vector of saved filenames
- */
-std::vector<std::string> save_range_images(
-    const std::vector<pcl::RangeImage::Ptr> &range_images, const std::string &base_filename = "range_image_"
-);
+PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud);

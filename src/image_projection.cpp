@@ -1,181 +1,176 @@
 #include "image_projection.hpp"
-
-#include <iomanip>
-#include <iostream>
 #include <memory>
-#include <sstream>
+#include <pcl/common/common.h>
+#include <pcl/range_image/range_image.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/visualization/range_image_visualizer.h>
+#include <tuple>
 
-pcl::RangeImage::Ptr
-create_range_image(const PointCloud::Ptr &cloud, float angular_resolution_x, float angular_resolution_y) {
+#include "pointcloud.hpp"
 
-    // Convert from degrees to radians
-    angular_resolution_x = pcl::deg2rad(angular_resolution_x);
-    angular_resolution_y = pcl::deg2rad(angular_resolution_y);
+PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb) {
+    if (cloud->empty()) {
+        std::cerr << "Warning: Empty cloud passed to transform_cloud_for_imaging" << std::endl;
+        return std::make_shared<PointCloud>();
+    }
 
-    // Create empty range image
-    auto range_image_ptr = std::make_shared<pcl::RangeImage>();
-    pcl::RangeImage &range_image = *range_image_ptr;
+    // Transform the point cloud to align with the oriented bounding box
+    // This brings the cloud to the origin with the OBB's orientation
+    auto transformed_cloud = std::make_shared<PointCloud>();
+    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
 
-    // Set parameters
-    Eigen::Affine3f sensor_pose = Eigen::Affine3f::Identity();
-    pcl::RangeImage::CoordinateFrame coordinate_frame = pcl::RangeImage::CAMERA_FRAME;
-    float noise_level = 0.0;
-    float min_range = 0.0f;
-    int border_size = 1;
+    // Set the rotation part of the transformation to the inverse of the OBB's rotation
+    transform.linear() = obb.rotation_matrix.transpose();
 
-    // Create range image from point cloud
-    range_image.createFromPointCloud(
-        *cloud,
-        angular_resolution_x,
-        angular_resolution_y,
-        pcl::deg2rad(360.0f),
-        pcl::deg2rad(180.0f),
-        sensor_pose,
-        coordinate_frame,
-        noise_level,
-        min_range,
-        border_size
-    );
+    // Set the translation part to move the OBB's center to the origin
+    transform.translation() = -transform.linear() * obb.position;
 
-    return range_image_ptr;
+    // Apply the transformation to the point cloud
+    pcl::transformPointCloud(*cloud, *transformed_cloud, transform);
+
+    // Create a second transformation to rotate -90 degrees about Y axis, then 90 degrees about X axis,
+    // and translate 1m along X axis
+    Eigen::Affine3f sensor_transform = Eigen::Affine3f::Identity();
+
+    // Rotate -90 degrees about Y axis
+    Eigen::AngleAxisf rotationY(-M_PI / 2, Eigen::Vector3f::UnitY());
+
+    // Rotate 90 degrees about X axis
+    Eigen::AngleAxisf rotationX(M_PI / 2, Eigen::Vector3f::UnitX());
+
+    // Combine rotations (apply Y rotation first, then X rotation)
+    sensor_transform.rotate(rotationX * rotationY);
+
+    // Translate 1 meter along X axis
+    sensor_transform.translation() = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
+
+    // Apply the second transformation
+    auto sensor_cloud = std::make_shared<PointCloud>();
+    pcl::transformPointCloud(*transformed_cloud, *sensor_cloud, sensor_transform);
+
+    return sensor_cloud;
 }
 
-std::vector<pcl::RangeImage::Ptr> create_range_images(
-    const std::vector<PointCloud::Ptr> &clouds, float angular_resolution_x, float angular_resolution_y
-) {
+pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution) {
+    if (cloud->empty()) {
+        std::cerr << "Warning: Empty cloud passed to create_range_images_from_cloud" << std::endl;
+        return std::make_shared<pcl::RangeImage>();
+    }
 
-    std::vector<pcl::RangeImage::Ptr> range_images;
+    // Calculate min and max points to determine FOV
+    Eigen::Vector4f min_pt, max_pt;
+    pcl::getMinMax3D(*cloud, min_pt, max_pt);
+
+    // Calculate angles for FOV based on min/max Y and Z
+    float min_y = min_pt[1], max_y = max_pt[1];
+    float min_z = min_pt[2], max_z = max_pt[2];
+    float min_x = min_pt[0]; // We'll use this for noise filtering
+
+    // Calculate the angular FOV in Y and Z directions
+    float y_angle_min = std::atan2(min_y, 1.0f);
+    float y_angle_max = std::atan2(max_y, 1.0f);
+    float z_angle_min = std::atan2(min_z, 1.0f);
+    float z_angle_max = std::atan2(max_z, 1.0f);
+
+    // Find the maximum absolute angle in each direction and double it for safety
+    float y_max_abs = std::max(std::abs(y_angle_min), std::abs(y_angle_max));
+    float z_max_abs = std::max(std::abs(z_angle_min), std::abs(z_angle_max));
+
+    // Double the maximum angles to ensure we capture everything
+    float angle_width = 2.0f * y_max_abs;
+    float angle_height = 2.0f * z_max_abs;
+
+    // Add a small buffer to ensure all points are captured
+    angle_width += 0.2f;
+    angle_height += 0.2f;
+
+    // Create the range image
+    auto range_image = std::make_shared<pcl::RangeImage>();
+    range_image->createFromPointCloud(
+        *cloud,
+        angular_resolution,
+        angle_width,
+        angle_height,
+        Eigen::Affine3f::Identity(),
+        pcl::RangeImage::LASER_FRAME,
+        0.0f // Noise level
+    );
+
+    // Check if the range image is empty or has invalid dimensions
+    if (range_image->empty() || range_image->width <= 0 || range_image->height <= 0) {
+        std::cerr << "Warning: Generated range image is empty or has invalid dimensions: " << range_image->width << "x"
+                  << range_image->height << std::endl;
+        std::cerr << "Angular resolution: " << pcl::rad2deg(angular_resolution) << " degrees" << std::endl;
+        std::cerr << "Angle width: " << pcl::rad2deg(angle_width) << " degrees" << std::endl;
+        std::cerr << "Angle height: " << pcl::rad2deg(angle_height) << " degrees" << std::endl;
+        return std::make_shared<pcl::RangeImage>();
+    }
+
+    pcl::visualization::RangeImageVisualizer range_image_widget("Range Image");
+    range_image_widget.showRangeImage(*range_image);
+    range_image_widget.spin();
+
+    return range_image;
+}
+
+std::vector<std::tuple<pcl::RangeImage::Ptr, pcl::RangeImage::Ptr>> create_range_images(
+    const std::vector<PointCloud::Ptr> &clouds, const std::vector<OrientedBoundingBox> &boxes, float angular_resolution
+) {
+    std::vector<std::tuple<pcl::RangeImage::Ptr, pcl::RangeImage::Ptr>> range_images;
+
+    if (clouds.size() != boxes.size()) {
+        std::cerr << "Error: Number of clouds (" << clouds.size() << ") does not match number of boxes ("
+                  << boxes.size() << ")" << std::endl;
+        return range_images;
+    }
+
+    angular_resolution = pcl::deg2rad(angular_resolution);
+
     range_images.reserve(clouds.size());
 
     for (size_t i = 0; i < clouds.size(); ++i) {
-        // Skip empty clouds
-        if (clouds[i]->empty()) {
-            std::cout << "Skipping empty cloud " << i << std::endl;
-            continue;
-        }
+        auto transformed_cloud = transform_cloud_for_imaging(clouds[i], boxes[i]);
+        auto intensity_cloud = create_intensity_scaled_cloud(transformed_cloud);
 
-        // Create range image
-        auto range_image = create_range_image(clouds[i], angular_resolution_x, angular_resolution_y);
-        range_images.push_back(range_image);
+        range_images.push_back(std::make_tuple(
+            create_range_image_from_cloud(transformed_cloud, angular_resolution),
+            create_range_image_from_cloud(intensity_cloud, angular_resolution)
+        ));
     }
 
     return range_images;
 }
 
-cv::Mat range_image_to_opencv(const pcl::RangeImage::Ptr &range_image) {
-    if (!range_image || range_image->empty()) {
-        std::cerr << "Empty range image passed to range_image_to_opencv" << std::endl;
-        return cv::Mat();
+PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud) {
+    if (cloud->empty()) {
+        std::cerr << "Warning: Empty cloud passed to create_intensity_scaled_cloud" << std::endl;
+        return std::make_shared<PointCloud>();
     }
 
-    // Get range image dimensions
-    int width = range_image->width;
-    int height = range_image->height;
+    auto scaled_cloud = std::make_shared<PointCloud>();
+    scaled_cloud->reserve(cloud->size());
 
-    // Create OpenCV matrix for the range image (8-bit, 3 channels)
-    cv::Mat range_image_mat(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
-
-    // Find min and max range values for normalization
-    float min_range = std::numeric_limits<float>::max();
-    float max_range = -std::numeric_limits<float>::max();
-
-    for (int i = 0; i < width * height; ++i) {
-        float range = range_image->points[i].range;
-        if (!std::isfinite(range))
+    for (const auto &point : *cloud) {
+        // Skip points with zero intensity
+        if (point.intensity <= 0.0f) {
             continue;
-
-        min_range = std::min(min_range, range);
-        max_range = std::max(max_range, range);
-    }
-
-    // Normalize and convert to color image
-    float range_diff = max_range - min_range;
-    if (range_diff <= 0)
-        range_diff = 1.0f; // Avoid division by zero
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int idx = y * width + x;
-            float range = range_image->points[idx].range;
-
-            if (std::isfinite(range)) {
-                // Normalize range to [0, 1]
-                float normalized_range = (range - min_range) / range_diff;
-
-                // Convert to color using a simple jet colormap
-                cv::Vec3b color;
-                if (normalized_range < 0.25) {
-                    // Blue to cyan
-                    color[0] = 255;
-                    color[1] = static_cast<uchar>(255 * normalized_range * 4);
-                    color[2] = 0;
-                } else if (normalized_range < 0.5) {
-                    // Cyan to green
-                    color[0] = static_cast<uchar>(255 * (1 - (normalized_range - 0.25) * 4));
-                    color[1] = 255;
-                    color[2] = 0;
-                } else if (normalized_range < 0.75) {
-                    // Green to yellow
-                    color[0] = 0;
-                    color[1] = 255;
-                    color[2] = static_cast<uchar>(255 * (normalized_range - 0.5) * 4);
-                } else {
-                    // Yellow to red
-                    color[0] = 0;
-                    color[1] = static_cast<uchar>(255 * (1 - (normalized_range - 0.75) * 4));
-                    color[2] = 255;
-                }
-
-                range_image_mat.at<cv::Vec3b>(y, x) = color;
-            }
         }
+
+        // Create a new point with coordinates scaled by intensity
+        Point scaled_point;
+        scaled_point.x = point.x * point.intensity;
+        scaled_point.y = point.y * point.intensity;
+        scaled_point.z = point.z * point.intensity;
+        scaled_point.intensity = point.intensity; // Keep the original intensity
+
+        scaled_cloud->push_back(scaled_point);
     }
 
-    return range_image_mat;
-}
+    // Copy the header information
+    scaled_cloud->header = cloud->header;
+    scaled_cloud->width = scaled_cloud->size();
+    scaled_cloud->height = 1;       // Unorganized point cloud
+    scaled_cloud->is_dense = false; // May contain invalid points
 
-bool save_range_image(const pcl::RangeImage::Ptr &range_image, const std::string &filename) {
-    if (!range_image || range_image->empty()) {
-        std::cerr << "Empty range image passed to save_range_image" << std::endl;
-        return false;
-    }
-
-    cv::Mat range_image_mat = range_image_to_opencv(range_image);
-    if (range_image_mat.empty()) {
-        std::cerr << "Failed to convert range image to OpenCV matrix" << std::endl;
-        return false;
-    }
-
-    try {
-        bool success = cv::imwrite(filename, range_image_mat);
-        if (success) {
-            std::cout << "Saved range image to " << filename << std::endl;
-        } else {
-            std::cerr << "Failed to save range image to " << filename << std::endl;
-        }
-        return success;
-    } catch (const cv::Exception &e) {
-        std::cerr << "OpenCV exception while saving range image: " << e.what() << std::endl;
-        return false;
-    }
-}
-
-std::vector<std::string>
-save_range_images(const std::vector<pcl::RangeImage::Ptr> &range_images, const std::string &base_filename) {
-
-    std::vector<std::string> saved_filenames;
-    saved_filenames.reserve(range_images.size());
-
-    for (size_t i = 0; i < range_images.size(); ++i) {
-        // Create filename with padded index
-        std::ostringstream filename_stream;
-        filename_stream << base_filename << std::setw(3) << std::setfill('0') << i << ".png";
-        std::string filename = filename_stream.str();
-
-        if (save_range_image(range_images[i], filename)) {
-            saved_filenames.push_back(filename);
-        }
-    }
-
-    return saved_filenames;
+    return scaled_cloud;
 }
