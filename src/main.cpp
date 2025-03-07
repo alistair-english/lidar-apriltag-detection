@@ -3,6 +3,7 @@
 #include <pcl/common/common.h>
 
 #include "euclidean_clustering.hpp"
+#include "image_projection.hpp"
 #include "intensity_gradient_filtering.hpp"
 #include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
@@ -98,6 +99,13 @@ int main(int argc, char **argv) {
     std::cout << "After OBB filtering: " << filtered_boxes.size() << " boxes remain" << std::endl;
 
     auto points_in_boxes = extract_points_in_obbs(cloud, filtered_boxes);
+
+    auto range_images = create_range_images(points_in_boxes);
+
+    // Save range images as PNG files
+    std::cout << "Saving range images as PNG files..." << std::endl;
+    auto saved_filenames = save_range_images(range_images, "range_image_");
+    std::cout << "Saved " << saved_filenames.size() << " range images." << std::endl;
 
     auto [viewer, viewports] = create_visualizer();
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);

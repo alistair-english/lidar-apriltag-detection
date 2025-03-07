@@ -20,7 +20,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 add_executable(
     tag_detection src/main.cpp src/intensity_gradient_filtering.cpp src/visualisation.cpp src/euclidean_clustering.cpp
-                  src/oriented_bounding_box.cpp
+                  src/oriented_bounding_box.cpp src/image_projection.cpp
 )
 target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS} Eigen3::Eigen)
 
