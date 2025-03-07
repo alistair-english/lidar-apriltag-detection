@@ -102,6 +102,24 @@ int main(int argc, char **argv) {
 
     auto range_images = create_range_images(points_in_boxes, filtered_boxes, 0.5);
 
+    for (size_t i = 0; i < range_images.size(); ++i) {
+        const auto &[range_image, intensity_image] = range_images[i];
+
+        if (range_image && !range_image->empty()) {
+            cv::Mat range_cv_image = convert_range_image_to_cv_mat(range_image);
+            std::string range_filename = "range_image_" + std::to_string(i) + ".png";
+            cv::imwrite(range_filename, range_cv_image);
+            std::cout << "Saved range image to: " << range_filename << std::endl;
+        }
+
+        if (intensity_image && !intensity_image->empty()) {
+            cv::Mat intensity_cv_image = convert_range_image_to_cv_mat(intensity_image);
+            std::string intensity_filename = "intensity_image_" + std::to_string(i) + ".png";
+            cv::imwrite(intensity_filename, intensity_cv_image);
+            std::cout << "Saved intensity image to: " << intensity_filename << std::endl;
+        }
+    }
+
     auto [viewer, viewports] = create_visualizer();
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
     add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);

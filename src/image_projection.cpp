@@ -2,6 +2,7 @@
 #include <memory>
 #include <pcl/common/common.h>
 #include <pcl/range_image/range_image.h>
+#include <pcl/visualization/common/float_image_utils.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/range_image_visualizer.h>
 #include <tuple>
@@ -106,10 +107,6 @@ pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud,
         return std::make_shared<pcl::RangeImage>();
     }
 
-    pcl::visualization::RangeImageVisualizer range_image_widget("Range Image");
-    range_image_widget.showRangeImage(*range_image);
-    range_image_widget.spin();
-
     return range_image;
 }
 
@@ -173,4 +170,67 @@ PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud) {
     scaled_cloud->is_dense = false; // May contain invalid points
 
     return scaled_cloud;
+}
+
+cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image) {
+    if (!range_image || range_image->empty()) {
+        std::cerr << "Warning: Empty range image passed to convert_range_image_to_cv_mat" << std::endl;
+        return cv::Mat();
+    }
+
+    // Get the dimensions of the range image
+    int width = range_image->width;
+    int height = range_image->height;
+
+    // Create an OpenCV matrix to hold the colored image (BGR format)
+    cv::Mat cv_image(height, width, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    // Find min and max range values for normalization
+    float min_range = std::numeric_limits<float>::max();
+    float max_range = -std::numeric_limits<float>::max();
+
+    // First pass to find min and max values
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float range = range_image->getPoint(x, y).range;
+
+            // Skip invalid points (NaN or infinity)
+            if (!std::isfinite(range) || range < 0) {
+                continue;
+            }
+
+            min_range = std::min(min_range, range);
+            max_range = std::max(max_range, range);
+        }
+    }
+
+    // If we couldn't find valid min/max values, return empty image
+    if (min_range >= max_range) {
+        std::cerr << "Warning: Could not determine valid range bounds in range image" << std::endl;
+        return cv_image;
+    }
+
+    // Second pass to normalize and colorize
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float range = range_image->getPoint(x, y).range;
+
+            // Skip invalid points
+            if (!std::isfinite(range) || range < 0) {
+                continue;
+            }
+
+            // Normalize the range value to [0, 1]
+            float normalized_range = (range - min_range) / (max_range - min_range);
+
+            // Get color for the normalized value using PCL's utility
+            uint8_t r, g, b;
+            pcl::visualization::FloatImageUtils::getColorForFloat(normalized_range, r, g, b);
+
+            // OpenCV uses BGR format
+            cv_image.at<cv::Vec3b>(y, x) = cv::Vec3b(b, g, r);
+        }
+    }
+
+    return cv_image;
 }

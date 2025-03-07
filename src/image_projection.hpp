@@ -2,6 +2,7 @@
 
 #include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
+#include <opencv2/opencv.hpp>
 #include <pcl/range_image/range_image.h>
 #include <pcl/range_image/range_image_planar.h>
 
@@ -47,3 +48,11 @@ std::vector<std::tuple<pcl::RangeImage::Ptr, pcl::RangeImage::Ptr>> create_range
  * @return PointCloud::Ptr New point cloud with points scaled by intensity
  */
 PointCloud::Ptr create_intensity_scaled_cloud(const PointCloud::Ptr &cloud);
+
+/**
+ * @brief Convert a PCL range image to an OpenCV Mat with normalized values and color mapping
+ *
+ * @param range_image Input range image
+ * @return cv::Mat Colored OpenCV image
+ */
+cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image);
