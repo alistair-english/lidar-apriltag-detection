@@ -13,6 +13,7 @@ struct Viewports {
     int v1;
     int v2;
     int v3;
+    int v4;
 };
 
 std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer();
@@ -69,3 +70,14 @@ bool save_range_image_as_png(
 );
 
 cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image);
+
+void visualize_3d_points(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const std::vector<Eigen::Vector3f> &points,
+    const std::string &id,
+    int viewport_id,
+    double r = 1.0,
+    double g = 0.0,
+    double b = 0.0,
+    double point_size = 5.0
+);

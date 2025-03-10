@@ -6,23 +6,27 @@ std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create
     auto viewer = std::make_shared<pcl::visualization::PCLVisualizer>("Point Cloud Viewer");
     Viewports viewports;
 
-    // Create three viewports
-    viewer->createViewPort(0.0, 0.0, 0.33, 1.0, viewports.v1);
-    viewer->createViewPort(0.33, 0.0, 0.67, 1.0, viewports.v2);
-    viewer->createViewPort(0.67, 0.0, 1.0, 1.0, viewports.v3);
+    // Create four viewports in a 2x2 grid
+    viewer->createViewPort(0.0, 0.5, 0.5, 1.0, viewports.v1);
+    viewer->createViewPort(0.5, 0.5, 1.0, 1.0, viewports.v2);
+    viewer->createViewPort(0.0, 0.0, 0.5, 0.5, viewports.v3);
+    viewer->createViewPort(0.5, 0.0, 1.0, 0.5, viewports.v4);
 
     viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v1);
     viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v2);
     viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v3);
+    viewer->setBackgroundColor(0.1, 0.1, 0.1, viewports.v4);
 
     // Add coordinate system axes to each viewport
     viewer->addCoordinateSystem(1.0, "coordinate_system_v1", viewports.v1);
     viewer->addCoordinateSystem(1.0, "coordinate_system_v2", viewports.v2);
     viewer->addCoordinateSystem(1.0, "coordinate_system_v3", viewports.v3);
+    viewer->addCoordinateSystem(1.0, "coordinate_system_v4", viewports.v4);
 
     viewer->addText("Original Point Cloud", 10, 10, 1.0, 1.0, 1.0, "v1_text", viewports.v1);
     viewer->addText("Filtered Point Cloud", 10, 10, 1.0, 1.0, 1.0, "v2_text", viewports.v2);
     viewer->addText("Points in OBBs", 10, 10, 1.0, 1.0, 1.0, "v3_text", viewports.v3);
+    viewer->addText("Marker Corner Points", 10, 10, 1.0, 1.0, 1.0, "v4_text", viewports.v4);
 
     return {viewer, viewports};
 }
@@ -193,6 +197,66 @@ bool save_range_image_as_png(
     }
 
     return success;
+}
+
+void visualize_3d_points(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const std::vector<Eigen::Vector3f> &points,
+    const std::string &id,
+    int viewport_id,
+    double r,
+    double g,
+    double b,
+    double point_size
+) {
+    if (points.empty()) {
+        std::cerr << "Warning: Empty points vector passed to visualize_3d_points" << std::endl;
+        return;
+    }
+
+    // Create a PCL point cloud to hold the points
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Reserve space for efficiency
+    cloud->points.reserve(points.size());
+
+    // Convert Eigen::Vector3f points to PCL points
+    for (const auto &point : points) {
+        // Skip invalid points (NaN)
+        if (!std::isfinite(point.x()) || !std::isfinite(point.y()) || !std::isfinite(point.z())) {
+            continue;
+        }
+
+        pcl::PointXYZ pcl_point;
+        pcl_point.x = point.x();
+        pcl_point.y = point.y();
+        pcl_point.z = point.z();
+        cloud->points.push_back(pcl_point);
+    }
+
+    // Update cloud width and height
+    cloud->width = cloud->points.size();
+    cloud->height = 1;
+
+    if (cloud->empty()) {
+        std::cerr << "Warning: No valid points to visualize" << std::endl;
+        return;
+    }
+
+    // Add the point cloud to the viewer
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> color_handler(cloud, r * 255, g * 255, b * 255);
+    viewer->addPointCloud<pcl::PointXYZ>(cloud, color_handler, id, viewport_id);
+    viewer->setPointCloudRenderingProperties(
+        pcl::visualization::PCL_VISUALIZER_POINT_SIZE, point_size, id, viewport_id
+    );
+
+    // Add text labels for each point
+    for (size_t i = 0; i < cloud->points.size(); ++i) {
+        const auto &pt = cloud->points[i];
+        std::string label_id = id + "_label_" + std::to_string(i);
+        std::string label_text = std::to_string(i);
+        viewer->addText3D(label_text, pt, 0.02, 1.0, 1.0, 1.0, label_id, viewport_id);
+    }
 }
 
 cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image) {

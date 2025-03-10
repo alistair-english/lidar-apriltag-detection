@@ -12,7 +12,7 @@
 #include "pointcloud.hpp"
 #include "visualisation.hpp"
 
-void printUsage(const char *programName) {
+void print_usage(const char *programName) {
     std::cout << "Usage: " << programName << " <pcd_file_path> [scale]" << std::endl;
     std::cout << "  pcd_file_path: Path to the PCD file to process" << std::endl;
     std::cout << "  scale: Optional scaling factor for coordinates (default: 1.0)" << std::endl;
@@ -37,7 +37,7 @@ ProgramArgs parse_arguments(int argc, char **argv) {
     ProgramArgs args;
 
     if (argc < 2 || argc > 3) {
-        printUsage(argv[0]);
+        print_usage(argv[0]);
         return args;
     }
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 
         add_point_cloud_intensity(viewer, points_in_box, "box_points_" + std::to_string(i), viewports.v3, 3.0);
 
-        const auto transformed_cloud = transform_cloud_for_imaging(points_in_box, obb);
+        const auto [transformed_cloud, applied_transform] = transform_cloud_for_imaging(points_in_box, obb);
         const auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
         auto intensity_image = create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
 
@@ -128,19 +128,34 @@ int main(int argc, char **argv) {
         cv::Mat threshold_intensity_image;
         cv::threshold(intensity_image, threshold_intensity_image, 10, 255, cv::THRESH_BINARY);
 
-        // Detect ArUco markers in the blurred intensity image
         std::vector<MarkerDetection> detections = detect_markers(threshold_intensity_image, "DICT_APRILTAG_36h11");
-
-        // Draw markers on the intensity image
         cv::Mat marked_image = draw_markers(intensity_image, detections);
 
-        // Print marker detection results
         std::cout << "Box " << i << " marker detections:" << std::endl;
         for (const auto &detection : detections) {
             std::cout << "  Marker ID: " << detection.id << std::endl;
+
+            // Convert marker corners to 3D points in original cloud frame
+            std::vector<Eigen::Vector3f> corner_points_3d =
+                convert_marker_points_to_3d(detection.corners, range_image, applied_transform);
+
+            // Print the 3D coordinates of each corner
+            std::cout << "    Corner 3D coordinates (original cloud frame):" << std::endl;
+            for (size_t j = 0; j < corner_points_3d.size(); ++j) {
+                const auto &pt = corner_points_3d[j];
+                if (std::isfinite(pt.x()) && std::isfinite(pt.y()) && std::isfinite(pt.z())) {
+                    std::cout << "      Corner " << j << ": (" << pt.x() << ", " << pt.y() << ", " << pt.z() << ")"
+                              << std::endl;
+                } else {
+                    std::cout << "      Corner " << j << ": Invalid point" << std::endl;
+                }
+            }
+
+            // Visualize the marker corner points in the fourth viewport
+            std::string marker_points_id = "marker_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
+            visualize_3d_points(viewer, corner_points_3d, marker_points_id, viewports.v4, 1.0, 0.0, 0.0, 8.0);
         }
 
-        // Save images
         cv::imwrite("range_image_" + std::to_string(i) + ".png", range_cv_image);
         cv::imwrite("intensity_image_" + std::to_string(i) + ".png", intensity_image);
         cv::imwrite("threshold_intensity_image_" + std::to_string(i) + ".png", threshold_intensity_image);
@@ -149,8 +164,11 @@ int main(int argc, char **argv) {
         i++;
     }
 
-    // std::cout << "Press 'q' to exit visualization..." << std::endl;
-    // viewer->spin();
+    // Add the original cloud to the fourth viewport for reference
+    add_point_cloud_intensity(viewer, cloud, "original_cloud_v4", viewports.v4, 1.0);
+
+    std::cout << "Press 'q' to exit visualization..." << std::endl;
+    viewer->spin();
 
     return 0;
 }

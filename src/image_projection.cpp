@@ -9,15 +9,15 @@
 
 #include "pointcloud.hpp"
 
-PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb) {
+std::tuple<PointCloud::Ptr, Eigen::Affine3f>
+transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb) {
     if (cloud->empty()) {
         std::cerr << "Warning: Empty cloud passed to transform_cloud_for_imaging" << std::endl;
-        return std::make_shared<PointCloud>();
+        return {std::make_shared<PointCloud>(), Eigen::Affine3f::Identity()};
     }
 
-    // Transform the point cloud to align with the oriented bounding box
+    // First transformation: align with the oriented bounding box
     // This brings the cloud to the origin with the OBB's orientation
-    auto transformed_cloud = std::make_shared<PointCloud>();
     Eigen::Affine3f transform = Eigen::Affine3f::Identity();
 
     // Set the rotation part of the transformation to the inverse of the OBB's rotation
@@ -26,11 +26,7 @@ PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const 
     // Set the translation part to move the OBB's center to the origin
     transform.translation() = -transform.linear() * obb.position;
 
-    // Apply the transformation to the point cloud
-    pcl::transformPointCloud(*cloud, *transformed_cloud, transform);
-
-    // Create a second transformation to rotate -90 degrees about Y axis, then 90 degrees about X axis,
-    // and translate 1m along X axis
+    // Second transformation
     Eigen::Affine3f sensor_transform = Eigen::Affine3f::Identity();
 
     // Rotate -90 degrees about Y axis
@@ -45,11 +41,14 @@ PointCloud::Ptr transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const 
     // Translate 1 meter along X axis
     sensor_transform.translation() = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 
-    // Apply the second transformation
-    auto sensor_cloud = std::make_shared<PointCloud>();
-    pcl::transformPointCloud(*transformed_cloud, *sensor_cloud, sensor_transform);
+    // Combine both transformations for the complete transform
+    Eigen::Affine3f complete_transform = sensor_transform * transform;
 
-    return sensor_cloud;
+    // Apply the combined transformation in a single step
+    auto transformed_cloud = std::make_shared<PointCloud>();
+    pcl::transformPointCloud(*cloud, *transformed_cloud, complete_transform);
+
+    return {transformed_cloud, complete_transform};
 }
 
 pcl::RangeImage::Ptr create_range_image_from_cloud(const PointCloud::Ptr &cloud, float angular_resolution) {
@@ -200,4 +199,94 @@ cv::Mat create_intensity_image_from_cloud(
     }
 
     return intensity_image;
+}
+
+std::vector<Eigen::Vector3f> convert_marker_points_to_3d(
+    const std::vector<cv::Point2f> &marker_corners,
+    const pcl::RangeImage::Ptr &range_image,
+    const Eigen::Affine3f &transform
+) {
+    std::vector<Eigen::Vector3f> points_3d;
+
+    if (range_image->empty() || marker_corners.empty()) {
+        std::cerr << "Warning: Empty range image or marker corners in convert_marker_points_to_3d" << std::endl;
+        return points_3d;
+    }
+
+    // Get range image dimensions
+    int width = range_image->width;
+    int height = range_image->height;
+
+    // For each corner point
+    for (const auto &corner : marker_corners) {
+        // Convert to integer coordinates for range image lookup
+        int x = static_cast<int>(std::round(corner.x));
+        int y = static_cast<int>(std::round(corner.y));
+
+        // Check if the point is within the range image bounds
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+            // Get the corresponding 3D point from the range image
+            const pcl::PointWithRange &range_point = range_image->at(x, y);
+
+            // Check if the range is valid
+            if (std::isfinite(range_point.range)) {
+                // Create a 3D point in the transformed cloud frame
+                Eigen::Vector3f point_transformed(range_point.x, range_point.y, range_point.z);
+
+                // Apply inverse transform to get the point in the original cloud frame
+                Eigen::Vector3f point_original = transform.inverse() * point_transformed;
+
+                // Add to the result vector
+                points_3d.push_back(point_original);
+            } else {
+                // If the range is invalid, try to interpolate from neighboring points
+                Eigen::Vector3f interpolated_point = Eigen::Vector3f::Zero();
+                int valid_neighbors = 0;
+
+                // Check 8 neighboring pixels
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (dx == 0 && dy == 0)
+                            continue; // Skip the center point
+
+                        int nx = x + dx;
+                        int ny = y + dy;
+
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            const pcl::PointWithRange &neighbor = range_image->at(nx, ny);
+                            if (std::isfinite(neighbor.range)) {
+                                interpolated_point += Eigen::Vector3f(neighbor.x, neighbor.y, neighbor.z);
+                                valid_neighbors++;
+                            }
+                        }
+                    }
+                }
+
+                if (valid_neighbors > 0) {
+                    // Average the valid neighbors
+                    interpolated_point /= static_cast<float>(valid_neighbors);
+
+                    // Apply inverse transform
+                    Eigen::Vector3f point_original = transform.inverse() * interpolated_point;
+                    points_3d.push_back(point_original);
+                } else {
+                    // If no valid neighbors, push a NaN point
+                    points_3d.push_back(Eigen::Vector3f(
+                        std::numeric_limits<float>::quiet_NaN(),
+                        std::numeric_limits<float>::quiet_NaN(),
+                        std::numeric_limits<float>::quiet_NaN()
+                    ));
+                }
+            }
+        } else {
+            // Point is outside the range image bounds
+            points_3d.push_back(Eigen::Vector3f(
+                std::numeric_limits<float>::quiet_NaN(),
+                std::numeric_limits<float>::quiet_NaN(),
+                std::numeric_limits<float>::quiet_NaN()
+            ));
+        }
+    }
+
+    return points_3d;
 }

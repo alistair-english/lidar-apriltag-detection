@@ -3,7 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <string>
 
-void printUsage(const char *programName) {
+void print_usage(const char *programName) {
     std::cout << "Usage: " << programName << " <dictionary> <id> <size> <output_file> [border_bits]" << std::endl;
     std::cout << "  dictionary: Dictionary name (DICT_4X4_50, DICT_4X4_100, DICT_4X4_250, DICT_4X4_1000," << std::endl;
     std::cout << "               DICT_5X5_50, DICT_5X5_100, DICT_5X5_250, DICT_5X5_1000," << std::endl;
@@ -69,7 +69,7 @@ cv::aruco::PREDEFINED_DICTIONARY_NAME getDictionaryByName(const std::string &nam
 int main(int argc, char **argv) {
     // Check command line arguments
     if (argc < 5 || argc > 6) {
-        printUsage(argv[0]);
+        print_usage(argv[0]);
         return 1;
     }
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
         return 0;
     } catch (const std::invalid_argument &e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        printUsage(argv[0]);
+        print_usage(argv[0]);
         return 1;
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
