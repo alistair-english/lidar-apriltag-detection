@@ -293,4 +293,4 @@ std::vector<Eigen::Vector3f> convert_marker_points_to_3d(
     return points_3d;
 }
 
-}
+} // namespace lidar_aruco_detection

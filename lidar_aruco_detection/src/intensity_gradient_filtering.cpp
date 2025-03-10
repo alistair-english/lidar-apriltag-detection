@@ -94,4 +94,4 @@ PointCloud::Ptr extract_significant_gradient_points(
     return significant_points;
 }
 
-}
+} // namespace lidar_aruco_detection

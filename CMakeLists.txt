@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
-project(lidar_aruco_detection 
-        VERSION 0.1.0
-        DESCRIPTION "LiDAR ArUco marker detection library"
-        LANGUAGES C CXX)
+project(
+    lidar_aruco_detection
+    VERSION 0.1.0
+    DESCRIPTION "LiDAR ArUco marker detection library"
+    LANGUAGES C CXX
+)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
