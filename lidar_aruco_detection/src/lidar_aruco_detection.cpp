@@ -131,37 +131,11 @@ std::vector<MarkerDetection> detect_markers_using_single_range_image_search(
     // Convert angular resolution from degrees to radians
     float angular_resolution = pcl::deg2rad(marker_search_config.angular_resolution_deg);
 
-    // Create a filtered point cloud containing only points in the front 180 degrees
-    // using PCL's FrustumCulling filter
-    pcl::FrustumCulling<Point> fc;
-
-    // Set camera parameters (position at origin, looking along positive X axis)
-    fc.setInputCloud(cloud);
-
-    // Set the horizontal field of view to 180 degrees
-    fc.setHorizontalFOV(179.0);
-
-    // Set the vertical field of view to cover most of the vertical range
-    fc.setVerticalFOV(179.0);
-
-    // Set near and far plane distances
-    fc.setNearPlaneDistance(0.1);
-    fc.setFarPlaneDistance(100.0);
-
-    // Apply the filter
-    auto filtered_cloud = std::make_shared<PointCloud>();
-    fc.filter(*filtered_cloud);
-
-    if (filtered_cloud->empty()) {
-        std::cerr << "Warning: No points in the front 180 degrees" << std::endl;
-        return marker_detections;
-    }
-
     // Create a range image from the filtered point cloud
-    auto range_image = create_range_image_from_cloud(filtered_cloud, angular_resolution);
+    auto range_image = create_range_image_from_cloud(cloud, angular_resolution);
 
     // Create intensity image from the range image
-    auto intensity_image = create_intensity_image_from_cloud(filtered_cloud, angular_resolution, range_image);
+    auto intensity_image = create_intensity_image_from_cloud(cloud, angular_resolution, range_image);
 
     // Threshold the intensity image to prepare for marker detection
     cv::Mat threshold_intensity_image;
@@ -203,11 +177,6 @@ std::vector<MarkerDetection> detect_markers_using_single_range_image_search(
             marker_debug.id = detection.id;
             marker_debug.corner_points = corner_points_3d;
             debug_data->marker_detections.push_back(marker_debug);
-
-            // Store the filtered cloud for visualization
-            if (debug_data->filtered_cloud == nullptr) {
-                debug_data->filtered_cloud = filtered_cloud;
-            }
         }
     }
 

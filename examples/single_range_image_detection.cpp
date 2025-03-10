@@ -86,11 +86,6 @@ int main(int argc, char **argv) {
 
     std::cout << "Detected " << markers.size() << " markers" << std::endl;
 
-    // Add the filtered point cloud to the second viewport
-    if (debug_data->filtered_cloud) {
-        add_point_cloud_intensity(viewer, debug_data->filtered_cloud, "filtered_cloud", viewports.v2, 2.0);
-    }
-
     // Save the range and intensity images
     const auto range_cv_image = convert_range_image_to_cv_mat(debug_data->range_image);
     cv::Mat marked_image = draw_markers(debug_data->intensity_image, debug_data->image_marker_detections);

@@ -56,7 +56,6 @@ struct MarkerSearchDebugData {
     cv::Mat thresholded_intensity_image;
     std::vector<ImageMarkerDetection> image_marker_detections;
     std::vector<MarkerDetectionDebugData> marker_detections;
-    PointCloud::Ptr filtered_cloud = nullptr; // Store the filtered cloud for visualization
 };
 
 struct IntensityGradientDebugData {
