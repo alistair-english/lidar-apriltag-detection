@@ -2,6 +2,7 @@
 #include <memory>
 #include <opencv2/core/mat.hpp>
 #include <pcl/range_image/range_image.h>
+#include <string>
 #include <vector>
 
 #include "lidar_aruco_detection/image_marker_detection.hpp"
@@ -9,6 +10,35 @@
 #include "pointcloud.hpp"
 
 namespace lidar_aruco_detection {
+
+/**
+ * @brief Configuration parameters for marker detection
+ */
+struct IntensityGradientConfiguration {
+    // Normal estimation parameters
+    float normal_estimation_radius = 0.01f;
+
+    // Intensity gradient parameters
+    float gradient_estimation_radius = 0.008f;
+    float intensity_threshold_percentile = 0.9f;
+
+    // Clustering parameters
+    float cluster_tolerance = 0.06f;
+    int min_cluster_size = 100;
+    int max_cluster_size = 25000;
+
+    // OBB filtering parameters
+    float min_diagonal = 0.3f;
+    float max_diagonal = 1.0f;
+    float max_aspect_ratio = 1.5f;
+
+    // Image projection parameters
+    float angular_resolution_deg = 0.3f;
+
+    // Marker detection parameters
+    std::string dictionary_name = "DICT_APRILTAG_36h11";
+    int intensity_threshold = 10;
+};
 
 struct MarkerDetection {
     int id;
@@ -42,10 +72,13 @@ struct IntensityGradientDebugData {
  * @brief Detect markers in a point cloud using intensity gradient clustering
  *
  * @param cloud Input point cloud
+ * @param config Configuration parameters
  * @param debug_data Optional reference to store debug data
  * @return std::vector<MarkerDetection> Vector of detected markers
  */
 std::vector<MarkerDetection> detect_markers_using_intensity_gradient_clustering(
-    const PointCloud::Ptr &cloud, std::shared_ptr<IntensityGradientDebugData> debug_data = nullptr
+    const PointCloud::Ptr &cloud,
+    const IntensityGradientConfiguration &config = IntensityGradientConfiguration(),
+    std::shared_ptr<IntensityGradientDebugData> debug_data = nullptr
 );
 } // namespace lidar_aruco_detection

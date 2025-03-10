@@ -16,7 +16,7 @@ namespace lidar_aruco_detection {
  */
 std::vector<PointCloud::Ptr> extract_euclidean_clusters(
     const PointCloud::Ptr &cloud,
-    float cluster_tolerance = 0.02,
+    float cluster_tolerance = 0.06,
     int min_cluster_size = 100,
     int max_cluster_size = 25000
 );

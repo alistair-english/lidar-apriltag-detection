@@ -11,33 +11,44 @@
 namespace lidar_aruco_detection {
 
 std::vector<MarkerDetection> detect_markers_using_intensity_gradient_clustering(
-    const PointCloud::Ptr &cloud, std::shared_ptr<IntensityGradientDebugData> debug_data
+    const PointCloud::Ptr &cloud,
+    const IntensityGradientConfiguration &config,
+    std::shared_ptr<IntensityGradientDebugData> debug_data
 ) {
+    // Step 1: Estimate normals
+    const auto normals = estimate_normals(cloud, config.normal_estimation_radius);
 
-    const auto normals = estimate_normals(cloud);
-    const auto gradients = estimate_intensity_gradient(cloud, normals);
-    float threshold = calculate_intensity_threshold(gradients);
+    // Step 2: Estimate intensity gradients
+    const auto gradients = estimate_intensity_gradient(cloud, normals, config.gradient_estimation_radius);
+
+    // Step 3: Calculate intensity threshold and extract significant points
+    float threshold = calculate_intensity_threshold(gradients, config.intensity_threshold_percentile);
     auto significant_points = extract_significant_gradient_points(cloud, gradients, threshold);
     if (debug_data) {
         debug_data->significant_gradient_points = significant_points;
     }
 
-    auto clusters = extract_euclidean_clusters(significant_points, 0.06, 100, 25000);
+    // Step 4: Perform clustering
+    auto clusters = extract_euclidean_clusters(
+        significant_points, config.cluster_tolerance, config.min_cluster_size, config.max_cluster_size
+    );
     if (debug_data) {
         debug_data->euclidean_clusters = clusters;
     }
 
+    // Step 5: Calculate and filter oriented bounding boxes
     auto boxes = calculate_oriented_bounding_boxes(clusters);
     if (debug_data) {
         debug_data->all_obbs = boxes;
     }
 
-    auto filtered_boxes = filter_obbs(boxes, 0.3, 1.0, 1.5);
+    auto filtered_boxes = filter_obbs(boxes, config.min_diagonal, config.max_diagonal, config.max_aspect_ratio);
     if (debug_data) {
         debug_data->filtered_obbs = filtered_boxes;
     }
 
-    float angular_resolution = pcl::deg2rad(0.3);
+    // Convert angular resolution from degrees to radians
+    float angular_resolution = pcl::deg2rad(config.angular_resolution_deg);
     std::vector<MarkerDetection> marker_detections;
 
     for (const auto &obb : filtered_boxes) {
@@ -53,9 +64,10 @@ std::vector<MarkerDetection> detect_markers_using_intensity_gradient_clustering(
         const auto range_cv_image = convert_range_image_to_cv_mat(range_image);
 
         cv::Mat threshold_intensity_image;
-        cv::threshold(intensity_image, threshold_intensity_image, 10, 255, cv::THRESH_BINARY);
+        cv::threshold(intensity_image, threshold_intensity_image, config.intensity_threshold, 255, cv::THRESH_BINARY);
 
-        std::vector<ImageMarkerDetection> detections = detect_markers(threshold_intensity_image, "DICT_APRILTAG_36h11");
+        std::vector<ImageMarkerDetection> detections =
+            detect_markers(threshold_intensity_image, config.dictionary_name);
 
         if (debug_data) {
             MarkerSearchDebugData search_debug;
