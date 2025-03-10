@@ -5,13 +5,7 @@
 #include <pcl/common/angles.h>
 #include <pcl/common/common.h>
 
-#include <lidar_aruco_detection/euclidean_clustering.hpp>
-#include <lidar_aruco_detection/image_marker_detection.hpp>
-#include <lidar_aruco_detection/image_projection.hpp>
-#include <lidar_aruco_detection/intensity_gradient_filtering.hpp>
 #include <lidar_aruco_detection/lidar_aruco_detection.hpp>
-#include <lidar_aruco_detection/oriented_bounding_box.hpp>
-#include <lidar_aruco_detection/pointcloud.hpp>
 #include <lidar_aruco_detection/visualisation.hpp>
 
 #include "helpers.hpp"
