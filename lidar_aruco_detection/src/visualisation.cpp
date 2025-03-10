@@ -1,6 +1,8 @@
-#include "visualisation.hpp"
+#include "lidar_aruco_detection/visualisation.hpp"
 #include <pcl/visualization/common/float_image_utils.h>
 #include <random>
+
+namespace lidar_aruco_detection {
 
 std::tuple<std::shared_ptr<pcl::visualization::PCLVisualizer>, Viewports> create_visualizer() {
     auto viewer = std::make_shared<pcl::visualization::PCLVisualizer>("Point Cloud Viewer");
@@ -345,3 +347,5 @@ cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image) {
 
     return cv_image;
 }
+
+} // namespace lidar_aruco_detection

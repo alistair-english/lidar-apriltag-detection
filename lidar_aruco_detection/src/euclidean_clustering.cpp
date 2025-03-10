@@ -1,9 +1,11 @@
-#include "euclidean_clustering.hpp"
-#include "pointcloud.hpp"
+#include "lidar_aruco_detection/euclidean_clustering.hpp"
+#include "lidar_aruco_detection/pointcloud.hpp"
 
 #include <memory>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+
+namespace lidar_aruco_detection {
 
 std::vector<PointCloud::Ptr> extract_euclidean_clusters(
     const PointCloud::Ptr &cloud, float cluster_tolerance, int min_cluster_size, int max_cluster_size
@@ -40,3 +42,5 @@ std::vector<PointCloud::Ptr> extract_euclidean_clusters(
 
     return clusters;
 }
+
+} // namespace lidar_aruco_detection

@@ -1,5 +1,7 @@
-#include "image_marker_detection.hpp"
+#include "lidar_aruco_detection/image_marker_detection.hpp"
 #include <iostream>
+
+namespace lidar_aruco_detection {
 
 cv::Ptr<cv::aruco::Dictionary> get_dictionary_by_name(const std::string &name) {
     if (name == "DICT_4X4_50")
@@ -229,3 +231,5 @@ calculate_marker_pose(const std::vector<Eigen::Vector3f> &corner_points_3d) {
 
     return {position, orientation};
 }
+
+} // namespace lidar_aruco_detection

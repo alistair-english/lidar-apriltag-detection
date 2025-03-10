@@ -1,4 +1,4 @@
-#include "image_projection.hpp"
+#include "lidar_aruco_detection/image_projection.hpp"
 #include <memory>
 #include <pcl/common/common.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -7,7 +7,9 @@
 #include <pcl/visualization/range_image_visualizer.h>
 #include <tuple>
 
-#include "pointcloud.hpp"
+#include "lidar_aruco_detection/pointcloud.hpp"
+
+namespace lidar_aruco_detection {
 
 std::tuple<PointCloud::Ptr, Eigen::Affine3f>
 transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb) {
@@ -289,4 +291,6 @@ std::vector<Eigen::Vector3f> convert_marker_points_to_3d(
     }
 
     return points_3d;
+}
+
 }

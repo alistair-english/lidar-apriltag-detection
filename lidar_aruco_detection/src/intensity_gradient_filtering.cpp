@@ -1,4 +1,6 @@
-#include "intensity_gradient_filtering.hpp"
+#include "lidar_aruco_detection/intensity_gradient_filtering.hpp"
+
+namespace lidar_aruco_detection {
 
 NormalCloud::Ptr estimate_normals(const PointCloud::Ptr &cloud, float radius) {
     auto normals = std::make_shared<NormalCloud>();
@@ -90,4 +92,6 @@ PointCloud::Ptr extract_significant_gradient_points(
     significant_points->is_dense = false;
 
     return significant_points;
+}
+
 }

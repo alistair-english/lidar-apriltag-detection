@@ -4,13 +4,16 @@
 #include <pcl/common/angles.h>
 #include <pcl/common/common.h>
 
-#include "euclidean_clustering.hpp"
-#include "image_marker_detection.hpp"
-#include "image_projection.hpp"
-#include "intensity_gradient_filtering.hpp"
-#include "oriented_bounding_box.hpp"
-#include "pointcloud.hpp"
-#include "visualisation.hpp"
+#include <lidar_aruco_detection/euclidean_clustering.hpp>
+#include <lidar_aruco_detection/image_marker_detection.hpp>
+#include <lidar_aruco_detection/image_projection.hpp>
+#include <lidar_aruco_detection/intensity_gradient_filtering.hpp>
+#include <lidar_aruco_detection/oriented_bounding_box.hpp>
+#include <lidar_aruco_detection/pointcloud.hpp>
+#include <lidar_aruco_detection/visualisation.hpp>
+
+// Use the namespace for convenience
+using namespace lidar_aruco_detection;
 
 void print_usage(const char *programName) {
     std::cout << "Usage: " << programName << " <pcd_file_path> [scale]" << std::endl;

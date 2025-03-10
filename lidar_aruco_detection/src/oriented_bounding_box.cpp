@@ -1,8 +1,10 @@
-#include "oriented_bounding_box.hpp"
-#include "pointcloud.hpp"
+#include "lidar_aruco_detection/oriented_bounding_box.hpp"
+#include "lidar_aruco_detection/pointcloud.hpp"
 #include <algorithm>
 #include <memory>
 #include <pcl/common/transforms.h>
+
+namespace lidar_aruco_detection {
 
 OrientedBoundingBox calculate_oriented_bounding_box(const PointCloud::Ptr &cloud) {
     OrientedBoundingBox obb;
@@ -143,3 +145,5 @@ PointCloud::Ptr extract_points_in_obb(const PointCloud::Ptr &cloud, const Orient
 
     return result;
 }
+
+} // namespace lidar_aruco_detection

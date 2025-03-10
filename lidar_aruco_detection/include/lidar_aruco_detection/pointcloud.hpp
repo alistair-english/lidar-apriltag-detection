@@ -10,6 +10,8 @@
 #include <pcl/point_types.h>
 #include <vector>
 
+namespace lidar_aruco_detection {
+
 using Point = pcl::PointXYZI;
 using PointCloud = pcl::PointCloud<Point>;
 
@@ -141,3 +143,5 @@ inline PointCloud::Ptr load_cloud(const std::string &filename, const float scale
 
     return cloud;
 }
+
+} // namespace lidar_aruco_detection

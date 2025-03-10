@@ -3,6 +3,8 @@
 #include "pointcloud.hpp"
 #include <vector>
 
+namespace lidar_aruco_detection {
+
 /**
  * @brief Extract Euclidean clusters from a point cloud
  *
@@ -18,3 +20,5 @@ std::vector<PointCloud::Ptr> extract_euclidean_clusters(
     int min_cluster_size = 100,
     int max_cluster_size = 25000
 );
+
+} // namespace lidar_aruco_detection

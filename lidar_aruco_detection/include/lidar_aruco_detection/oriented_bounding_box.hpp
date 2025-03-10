@@ -5,6 +5,8 @@
 #include <pcl/common/common.h>
 #include <pcl/common/pca.h>
 
+namespace lidar_aruco_detection {
+
 struct OrientedBoundingBox {
     Eigen::Vector3f position;        // Center position
     Eigen::Vector3f dimensions;      // Width, height, depth
@@ -24,3 +26,5 @@ std::vector<OrientedBoundingBox> filter_obbs(
 );
 
 PointCloud::Ptr extract_points_in_obb(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb);
+
+} // namespace lidar_aruco_detection

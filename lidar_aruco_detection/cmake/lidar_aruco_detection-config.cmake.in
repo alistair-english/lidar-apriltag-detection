@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(PCL)
+find_dependency(OpenCV)
+find_dependency(Eigen3)
+find_dependency(yaml-cpp)
+
+include("${CMAKE_CURRENT_LIST_DIR}/lidar_aruco_detection-targets.cmake")

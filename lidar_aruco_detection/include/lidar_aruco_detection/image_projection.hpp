@@ -6,6 +6,8 @@
 #include <pcl/range_image/range_image.h>
 #include <pcl/range_image/range_image_planar.h>
 
+namespace lidar_aruco_detection {
+
 std::tuple<PointCloud::Ptr, Eigen::Affine3f>
 transform_cloud_for_imaging(const PointCloud::Ptr &cloud, const OrientedBoundingBox &obb);
 
@@ -23,3 +25,5 @@ std::vector<Eigen::Vector3f> convert_marker_points_to_3d(
     const pcl::RangeImage::Ptr &range_image,
     const Eigen::Affine3f &transform
 );
+
+} // namespace lidar_aruco_detection

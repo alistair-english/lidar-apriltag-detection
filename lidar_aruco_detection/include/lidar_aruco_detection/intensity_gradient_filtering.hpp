@@ -13,6 +13,8 @@
 
 #include "pointcloud.hpp"
 
+namespace lidar_aruco_detection {
+
 using NormalCloud = pcl::PointCloud<pcl::Normal>;
 using GradientCloud = pcl::PointCloud<pcl::IntensityGradient>;
 
@@ -33,3 +35,5 @@ float calculate_intensity_threshold(const GradientCloud::Ptr &gradients, float p
 // Extract points with significant gradient magnitudes
 PointCloud::Ptr
 extract_significant_gradient_points(const PointCloud::Ptr &cloud, const GradientCloud::Ptr &gradients, float threshold);
+
+} // namespace lidar_aruco_detection

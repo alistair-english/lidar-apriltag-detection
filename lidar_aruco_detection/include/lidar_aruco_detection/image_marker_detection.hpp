@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+namespace lidar_aruco_detection {
+
 struct MarkerDetection {
     int id;                           // Marker ID
     std::vector<cv::Point2f> corners; // Four corners of the marker
@@ -46,3 +48,5 @@ cv::Ptr<cv::aruco::Dictionary> get_dictionary_by_name(const std::string &name);
  */
 std::tuple<Eigen::Vector3f, Eigen::Quaternionf>
 calculate_marker_pose(const std::vector<Eigen::Vector3f> &corner_points_3d);
+
+} // namespace lidar_aruco_detection

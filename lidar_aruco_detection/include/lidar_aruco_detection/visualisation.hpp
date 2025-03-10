@@ -9,6 +9,8 @@
 #include <tuple>
 #include <vector>
 
+namespace lidar_aruco_detection {
+
 struct Viewports {
     int v1;
     int v2;
@@ -100,3 +102,5 @@ void visualize_marker_pose(
     int viewport_id,
     double scale = 0.1
 );
+
+} // namespace lidar_aruco_detection
