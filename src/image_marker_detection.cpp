@@ -1,4 +1,4 @@
-#include "marker_detection.hpp"
+#include "image_marker_detection.hpp"
 #include <iostream>
 
 cv::Ptr<cv::aruco::Dictionary> get_dictionary_by_name(const std::string &name) {
@@ -138,8 +138,8 @@ calculate_marker_pose(const std::vector<Eigen::Vector3f> &corner_points_3d) {
     // Calculate marker orientation
     // We need to define the marker coordinate system:
     // - Origin at the center of the marker
-    // - X axis from center to the middle of the first edge (between corners 0 and 1)
-    // - Y axis from center to the middle of the last edge (between corners 3 and 0)
+    // - Y axis from center to the middle of the first edge (between corners 0 and 1)
+    // - X axis from center to the middle of the second edge (between corners 1 and 2)
     // - Z axis as the cross product of X and Y (perpendicular to the marker plane)
 
     // For a standard ArUco marker, corners are ordered:
@@ -148,12 +148,12 @@ calculate_marker_pose(const std::vector<Eigen::Vector3f> &corner_points_3d) {
     if (valid_points.size() == 4) {
         // We have all four corners, use them to define the coordinate system
 
-        // X axis: from center to the middle of the top edge (between corners 0 and 1)
-        Eigen::Vector3f x_axis = ((valid_points[0] + valid_points[1]) / 2.0f) - position;
+        // X axis: from center to the middle of the top edge (between corners 1 and 2)
+        Eigen::Vector3f x_axis = ((valid_points[1] + valid_points[2]) / 2.0f) - position;
         x_axis.normalize();
 
-        // Y axis: from center to the middle of the left edge (between corners 3 and 0)
-        Eigen::Vector3f y_axis = ((valid_points[3] + valid_points[0]) / 2.0f) - position;
+        // Y axis: from center to the middle of the left edge (between corners 0 and 1)
+        Eigen::Vector3f y_axis = ((valid_points[0] + valid_points[1]) / 2.0f) - position;
         y_axis.normalize();
 
         // Make Y orthogonal to X

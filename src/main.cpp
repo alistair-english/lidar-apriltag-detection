@@ -5,9 +5,9 @@
 #include <pcl/common/common.h>
 
 #include "euclidean_clustering.hpp"
+#include "image_marker_detection.hpp"
 #include "image_projection.hpp"
 #include "intensity_gradient_filtering.hpp"
-#include "marker_detection.hpp"
 #include "oriented_bounding_box.hpp"
 #include "pointcloud.hpp"
 #include "visualisation.hpp"

@@ -26,7 +26,7 @@ add_executable(
     src/euclidean_clustering.cpp
     src/oriented_bounding_box.cpp
     src/image_projection.cpp
-    src/marker_detection.cpp
+    src/image_marker_detection.cpp
 )
 target_link_libraries(tag_detection ${PCL_LIBRARIES} ${OpenCV_LIBS} Eigen3::Eigen)
 
