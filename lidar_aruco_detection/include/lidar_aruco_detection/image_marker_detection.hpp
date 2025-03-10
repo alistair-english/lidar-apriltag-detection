@@ -9,7 +9,7 @@
 
 namespace lidar_aruco_detection {
 
-struct MarkerDetection {
+struct ImageMarkerDetection {
     int id;                           // Marker ID
     std::vector<cv::Point2f> corners; // Four corners of the marker
 };
@@ -21,7 +21,7 @@ struct MarkerDetection {
  * @param dictionary_name Name of the ArUco dictionary to use (e.g., "DICT_4X4_50")
  * @return Vector of detected markers
  */
-std::vector<MarkerDetection> detect_markers(const cv::Mat &image, const std::string &dictionary_name);
+std::vector<ImageMarkerDetection> detect_markers(const cv::Mat &image, const std::string &dictionary_name);
 
 /**
  * Draw detected markers on an image
@@ -30,7 +30,7 @@ std::vector<MarkerDetection> detect_markers(const cv::Mat &image, const std::str
  * @param detections Vector of marker detections
  * @return Image with markers drawn on it
  */
-cv::Mat draw_markers(const cv::Mat &image, const std::vector<MarkerDetection> &detections);
+cv::Mat draw_markers(const cv::Mat &image, const std::vector<ImageMarkerDetection> &detections);
 
 /**
  * Get ArUco dictionary by name

@@ -4,9 +4,15 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 # Define the library source files
-set(LIDAR_ARUCO_DETECTION_SOURCES
-    src/euclidean_clustering.cpp src/image_marker_detection.cpp src/image_projection.cpp
-    src/intensity_gradient_filtering.cpp src/oriented_bounding_box.cpp src/visualisation.cpp
+set(
+    LIDAR_ARUCO_DETECTION_SOURCES
+    src/lidar_aruco_detection.cpp
+    src/euclidean_clustering.cpp
+    src/image_marker_detection.cpp
+    src/image_projection.cpp
+    src/intensity_gradient_filtering.cpp
+    src/oriented_bounding_box.cpp
+    src/visualisation.cpp
 )
 
 # Create the shared library

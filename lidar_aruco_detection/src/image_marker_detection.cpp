@@ -52,8 +52,8 @@ cv::Ptr<cv::aruco::Dictionary> get_dictionary_by_name(const std::string &name) {
     return cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
 }
 
-std::vector<MarkerDetection> detect_markers(const cv::Mat &image, const std::string &dictionary_name) {
-    std::vector<MarkerDetection> result;
+std::vector<ImageMarkerDetection> detect_markers(const cv::Mat &image, const std::string &dictionary_name) {
+    std::vector<ImageMarkerDetection> result;
 
     // Check if image is valid
     if (image.empty()) {
@@ -76,7 +76,7 @@ std::vector<MarkerDetection> detect_markers(const cv::Mat &image, const std::str
 
     // Process detection results
     for (size_t i = 0; i < markerIds.size(); i++) {
-        MarkerDetection detection;
+        ImageMarkerDetection detection;
         detection.id = markerIds[i];
         detection.corners = markerCorners[i];
 
@@ -86,7 +86,7 @@ std::vector<MarkerDetection> detect_markers(const cv::Mat &image, const std::str
     return result;
 }
 
-cv::Mat draw_markers(const cv::Mat &image, const std::vector<MarkerDetection> &detections) {
+cv::Mat draw_markers(const cv::Mat &image, const std::vector<ImageMarkerDetection> &detections) {
     // Create a copy of the input image to draw on
     cv::Mat outputImage;
     if (image.channels() == 1) {

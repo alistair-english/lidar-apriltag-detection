@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <iostream>
 
+#include <memory>
 #include <pcl/common/angles.h>
 #include <pcl/common/common.h>
 
@@ -8,6 +9,7 @@
 #include <lidar_aruco_detection/image_marker_detection.hpp>
 #include <lidar_aruco_detection/image_projection.hpp>
 #include <lidar_aruco_detection/intensity_gradient_filtering.hpp>
+#include <lidar_aruco_detection/lidar_aruco_detection.hpp>
 #include <lidar_aruco_detection/oriented_bounding_box.hpp>
 #include <lidar_aruco_detection/pointcloud.hpp>
 #include <lidar_aruco_detection/visualisation.hpp>
@@ -88,86 +90,41 @@ int main(int argc, char **argv) {
 
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
 
-    const auto normals = estimate_normals(cloud);
-    std::cout << "Estimated " << normals->size() << " surface normals." << std::endl;
+    auto debug_data = std::make_shared<IntensityGradientDebugData>();
+    const auto markers = detect_markers_using_intensity_gradient_clustering(cloud, debug_data);
 
-    const auto gradients = estimate_intensity_gradient(cloud, normals);
-    std::cout << "Estimated " << gradients->size() << " intensity gradients." << std::endl;
-
-    float threshold = calculate_intensity_threshold(gradients);
-    std::cout << "Calculated intensity gradient threshold: " << threshold << std::endl;
-
-    auto significant_points = extract_significant_gradient_points(cloud, gradients, threshold);
-    std::cout << "Extracted " << significant_points->size() << " points with significant gradient magnitudes"
-              << " (threshold: " << threshold << ")" << std::endl;
-
-    add_point_cloud(viewer, significant_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
-
-    auto clusters = extract_euclidean_clusters(significant_points, 0.06, 100, 25000);
-    std::cout << "Found " << clusters.size() << " clusters" << std::endl;
-
-    visualize_clusters(viewer, clusters, viewports.v2);
-
-    auto boxes = calculate_oriented_bounding_boxes(clusters);
-    std::cout << "Calculated " << boxes.size() << " oriented bounding boxes" << std::endl;
-
-    auto filtered_boxes = filter_obbs(boxes, 0.3, 1.0, 1.5);
-    std::cout << "After OBB filtering: " << filtered_boxes.size() << " boxes remain" << std::endl;
-
-    visualize_oriented_bounding_boxes(viewer, filtered_boxes, viewports.v2);
-
-    float angular_resolution = pcl::deg2rad(0.3);
+    add_point_cloud(viewer, debug_data->significant_gradient_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
+    visualize_clusters(viewer, debug_data->euclidean_clusters, viewports.v2);
+    visualize_oriented_bounding_boxes(viewer, debug_data->filtered_obbs, viewports.v2);
 
     size_t i = 0;
-    for (const auto &obb : filtered_boxes) {
-        const auto points_in_box = extract_points_in_obb(cloud, obb);
+    for (const auto &filtered_points : debug_data->obb_filtered_points) {
+        add_point_cloud_intensity(viewer, filtered_points, "box_points_" + std::to_string(i), viewports.v3, 3.0);
+        i++;
+    }
 
-        add_point_cloud_intensity(viewer, points_in_box, "box_points_" + std::to_string(i), viewports.v3, 3.0);
-
-        const auto [transformed_cloud, applied_transform] = transform_cloud_for_imaging(points_in_box, obb);
-        const auto range_image = create_range_image_from_cloud(transformed_cloud, angular_resolution);
-        auto intensity_image = create_intensity_image_from_cloud(transformed_cloud, angular_resolution, range_image);
-
-        const auto range_cv_image = convert_range_image_to_cv_mat(range_image);
-
-        cv::Mat threshold_intensity_image;
-        cv::threshold(intensity_image, threshold_intensity_image, 10, 255, cv::THRESH_BINARY);
-
-        std::vector<MarkerDetection> detections = detect_markers(threshold_intensity_image, "DICT_APRILTAG_36h11");
-        cv::Mat marked_image = draw_markers(intensity_image, detections);
-
-        std::cout << "Box " << i << " marker detections:" << std::endl;
-        for (const auto &detection : detections) {
-            std::cout << "  Marker ID: " << detection.id << std::endl;
-
-            // Convert marker corners to 3D points in original cloud frame
-            std::vector<Eigen::Vector3f> corner_points_3d =
-                convert_marker_points_to_3d(detection.corners, range_image, applied_transform);
-
-            // Calculate marker pose from 3D corner points
-            auto [marker_position, marker_orientation] = calculate_marker_pose(corner_points_3d);
-
-            // Print marker pose
-            std::cout << "    Marker pose (original cloud frame):" << std::endl;
-            std::cout << "      Position: (" << marker_position.x() << ", " << marker_position.y() << ", "
-                      << marker_position.z() << ")" << std::endl;
-            std::cout << "      Orientation (quaternion): (" << marker_orientation.w() << ", " << marker_orientation.x()
-                      << ", " << marker_orientation.y() << ", " << marker_orientation.z() << ")" << std::endl;
-
-            // Visualize the marker corner points in the fourth viewport
-            std::string marker_points_id = "marker_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
-            visualize_3d_points(viewer, corner_points_3d, marker_points_id, viewports.v4, 1.0, 0.0, 0.0, 8.0);
-
-            // Visualize the marker pose (coordinate system)
-            std::string marker_pose_id = "marker_pose_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
-            visualize_marker_pose(viewer, marker_position, marker_orientation, marker_pose_id, viewports.v4, 0.2);
-        }
-
+    i = 0;
+    for (const auto &marker_search : debug_data->obb_marker_searches) {
+        const auto range_cv_image = convert_range_image_to_cv_mat(marker_search.range_image);
+        cv::Mat marked_image = draw_markers(marker_search.intensity_image, marker_search.image_marker_detections);
         cv::imwrite("range_image_" + std::to_string(i) + ".png", range_cv_image);
-        cv::imwrite("intensity_image_" + std::to_string(i) + ".png", intensity_image);
-        cv::imwrite("threshold_intensity_image_" + std::to_string(i) + ".png", threshold_intensity_image);
+        cv::imwrite("intensity_image_" + std::to_string(i) + ".png", marker_search.intensity_image);
+        cv::imwrite(
+            "threshold_intensity_image_" + std::to_string(i) + ".png", marker_search.thresholded_intensity_image
+        );
         cv::imwrite("marker_detection_" + std::to_string(i) + ".png", marked_image);
 
+        for (const auto &detection : marker_search.marker_detections) {
+            std::string marker_points_id = "marker_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
+            visualize_3d_points(viewer, detection.corner_points, marker_points_id, viewports.v4, 1.0, 0.0, 0.0, 8.0);
+        }
+        i++;
+    }
+
+    i = 0;
+    for (const auto &marker : markers) {
+        std::string marker_pose_id = "marker_pose_" + std::to_string(i) + "_id_" + std::to_string(marker.id);
+        visualize_marker_pose(viewer, marker.position, marker.orientation, marker_pose_id, viewports.v4, 0.2);
         i++;
     }
 
