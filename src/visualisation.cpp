@@ -259,6 +259,30 @@ void visualize_3d_points(
     }
 }
 
+void visualize_marker_pose(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const Eigen::Vector3f &position,
+    const Eigen::Quaternionf &orientation,
+    const std::string &id,
+    int viewport_id,
+    double scale
+) {
+    if (!std::isfinite(position.x()) || !std::isfinite(position.y()) || !std::isfinite(position.z()) ||
+        !std::isfinite(orientation.w()) || !std::isfinite(orientation.x()) || !std::isfinite(orientation.y()) ||
+        !std::isfinite(orientation.z())) {
+        std::cerr << "Warning: Invalid position or orientation in visualize_marker_pose" << std::endl;
+        return;
+    }
+
+    // Create transformation from position and orientation
+    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+    transform.translate(position);
+    transform.rotate(orientation);
+
+    // Add coordinate system to visualizer
+    viewer->addCoordinateSystem(scale, transform, id, viewport_id);
+}
+
 cv::Mat convert_range_image_to_cv_mat(const pcl::RangeImage::Ptr &range_image) {
     if (!range_image || range_image->empty()) {
         std::cerr << "Warning: Empty range image passed to convert_range_image_to_cv_mat" << std::endl;

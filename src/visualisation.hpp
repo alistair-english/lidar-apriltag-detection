@@ -81,3 +81,22 @@ void visualize_3d_points(
     double b = 0.0,
     double point_size = 5.0
 );
+
+/**
+ * Visualize a marker pose (position and orientation)
+ *
+ * @param viewer PCL visualizer
+ * @param position Marker center position
+ * @param orientation Marker orientation as quaternion
+ * @param id Unique identifier for the visualization
+ * @param viewport_id Viewport to add the visualization to
+ * @param scale Scale of the coordinate system
+ */
+void visualize_marker_pose(
+    std::shared_ptr<pcl::visualization::PCLVisualizer> viewer,
+    const Eigen::Vector3f &position,
+    const Eigen::Quaternionf &orientation,
+    const std::string &id,
+    int viewport_id,
+    double scale = 0.1
+);

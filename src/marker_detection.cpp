@@ -110,3 +110,122 @@ cv::Mat draw_markers(const cv::Mat &image, const std::vector<MarkerDetection> &d
 
     return outputImage;
 }
+
+std::tuple<Eigen::Vector3f, Eigen::Quaternionf>
+calculate_marker_pose(const std::vector<Eigen::Vector3f> &corner_points_3d) {
+
+    // Default return values
+    Eigen::Vector3f position = Eigen::Vector3f::Zero();
+    Eigen::Quaternionf orientation = Eigen::Quaternionf::Identity();
+
+    // Count valid points and compute center
+    std::vector<Eigen::Vector3f> valid_points;
+    for (const auto &pt : corner_points_3d) {
+        if (std::isfinite(pt.x()) && std::isfinite(pt.y()) && std::isfinite(pt.z())) {
+            valid_points.push_back(pt);
+            position += pt;
+        }
+    }
+
+    if (valid_points.size() < 4) {
+        std::cerr << "Warning: Not enough valid corner points to calculate marker pose" << std::endl;
+        return {position, orientation};
+    }
+
+    // Calculate center position (average of all valid corners)
+    position /= static_cast<float>(valid_points.size());
+
+    // Calculate marker orientation
+    // We need to define the marker coordinate system:
+    // - Origin at the center of the marker
+    // - X axis from center to the middle of the first edge (between corners 0 and 1)
+    // - Y axis from center to the middle of the last edge (between corners 3 and 0)
+    // - Z axis as the cross product of X and Y (perpendicular to the marker plane)
+
+    // For a standard ArUco marker, corners are ordered:
+    // 0: top-left, 1: top-right, 2: bottom-right, 3: bottom-left
+
+    if (valid_points.size() == 4) {
+        // We have all four corners, use them to define the coordinate system
+
+        // X axis: from center to the middle of the top edge (between corners 0 and 1)
+        Eigen::Vector3f x_axis = ((valid_points[0] + valid_points[1]) / 2.0f) - position;
+        x_axis.normalize();
+
+        // Y axis: from center to the middle of the left edge (between corners 3 and 0)
+        Eigen::Vector3f y_axis = ((valid_points[3] + valid_points[0]) / 2.0f) - position;
+        y_axis.normalize();
+
+        // Make Y orthogonal to X
+        y_axis = y_axis - x_axis * (x_axis.dot(y_axis));
+        y_axis.normalize();
+
+        // Z axis: cross product of X and Y
+        Eigen::Vector3f z_axis = x_axis.cross(y_axis);
+        z_axis.normalize();
+
+        // Create rotation matrix from the three axes
+        Eigen::Matrix3f rotation_matrix;
+        rotation_matrix.col(0) = x_axis;
+        rotation_matrix.col(1) = y_axis;
+        rotation_matrix.col(2) = z_axis;
+
+        // Convert to quaternion
+        orientation = Eigen::Quaternionf(rotation_matrix);
+    } else {
+        // We don't have all four corners, use a simpler approach
+        // Fit a plane to the points and use the normal as Z axis
+
+        // Calculate centroid
+        Eigen::Vector3f centroid = Eigen::Vector3f::Zero();
+        for (const auto &pt : valid_points) {
+            centroid += pt;
+        }
+        centroid /= static_cast<float>(valid_points.size());
+
+        // Calculate covariance matrix
+        Eigen::Matrix3f covariance = Eigen::Matrix3f::Zero();
+        for (const auto &pt : valid_points) {
+            Eigen::Vector3f centered = pt - centroid;
+            covariance += centered * centered.transpose();
+        }
+
+        // Perform SVD to find the normal (smallest eigenvector)
+        Eigen::JacobiSVD<Eigen::Matrix3f> svd(covariance, Eigen::ComputeFullU);
+        Eigen::Vector3f normal = svd.matrixU().col(2);
+
+        // Make sure the normal points towards the viewer (positive Z)
+        if (normal.z() < 0) {
+            normal = -normal;
+        }
+
+        // Create a coordinate system with Z as the normal
+        Eigen::Vector3f z_axis = normal;
+
+        // Choose X axis (any vector perpendicular to Z)
+        Eigen::Vector3f x_axis;
+        if (std::abs(z_axis.x()) < std::abs(z_axis.y()) && std::abs(z_axis.x()) < std::abs(z_axis.z())) {
+            x_axis = Eigen::Vector3f(1, 0, 0).cross(z_axis);
+        } else if (std::abs(z_axis.y()) < std::abs(z_axis.z())) {
+            x_axis = Eigen::Vector3f(0, 1, 0).cross(z_axis);
+        } else {
+            x_axis = Eigen::Vector3f(0, 0, 1).cross(z_axis);
+        }
+        x_axis.normalize();
+
+        // Y axis is the cross product of Z and X
+        Eigen::Vector3f y_axis = z_axis.cross(x_axis);
+        y_axis.normalize();
+
+        // Create rotation matrix from the three axes
+        Eigen::Matrix3f rotation_matrix;
+        rotation_matrix.col(0) = x_axis;
+        rotation_matrix.col(1) = y_axis;
+        rotation_matrix.col(2) = z_axis;
+
+        // Convert to quaternion
+        orientation = Eigen::Quaternionf(rotation_matrix);
+    }
+
+    return {position, orientation};
+}

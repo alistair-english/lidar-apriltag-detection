@@ -139,21 +139,23 @@ int main(int argc, char **argv) {
             std::vector<Eigen::Vector3f> corner_points_3d =
                 convert_marker_points_to_3d(detection.corners, range_image, applied_transform);
 
-            // Print the 3D coordinates of each corner
-            std::cout << "    Corner 3D coordinates (original cloud frame):" << std::endl;
-            for (size_t j = 0; j < corner_points_3d.size(); ++j) {
-                const auto &pt = corner_points_3d[j];
-                if (std::isfinite(pt.x()) && std::isfinite(pt.y()) && std::isfinite(pt.z())) {
-                    std::cout << "      Corner " << j << ": (" << pt.x() << ", " << pt.y() << ", " << pt.z() << ")"
-                              << std::endl;
-                } else {
-                    std::cout << "      Corner " << j << ": Invalid point" << std::endl;
-                }
-            }
+            // Calculate marker pose from 3D corner points
+            auto [marker_position, marker_orientation] = calculate_marker_pose(corner_points_3d);
+
+            // Print marker pose
+            std::cout << "    Marker pose (original cloud frame):" << std::endl;
+            std::cout << "      Position: (" << marker_position.x() << ", " << marker_position.y() << ", "
+                      << marker_position.z() << ")" << std::endl;
+            std::cout << "      Orientation (quaternion): (" << marker_orientation.w() << ", " << marker_orientation.x()
+                      << ", " << marker_orientation.y() << ", " << marker_orientation.z() << ")" << std::endl;
 
             // Visualize the marker corner points in the fourth viewport
             std::string marker_points_id = "marker_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
             visualize_3d_points(viewer, corner_points_3d, marker_points_id, viewports.v4, 1.0, 0.0, 0.0, 8.0);
+
+            // Visualize the marker pose (coordinate system)
+            std::string marker_pose_id = "marker_pose_" + std::to_string(i) + "_id_" + std::to_string(detection.id);
+            visualize_marker_pose(viewer, marker_position, marker_orientation, marker_pose_id, viewports.v4, 0.2);
         }
 
         cv::imwrite("range_image_" + std::to_string(i) + ".png", range_cv_image);
