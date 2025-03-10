@@ -12,6 +12,8 @@
 #include <lidar_aruco_detection/pointcloud.hpp>
 #include <lidar_aruco_detection/visualisation.hpp>
 
+#include "helpers.hpp"
+
 // Use the namespace for convenience
 using namespace lidar_aruco_detection;
 
