@@ -9,12 +9,21 @@ target_link_libraries(
     tag_detection PRIVATE lidar_aruco_detection::lidar_aruco_detection ${PCL_LIBRARIES} ${OpenCV_LIBS}
 )
 
+# Create the single range image detection application
+add_executable(single_range_image_detection single_range_image_detection.cpp)
+target_link_libraries(
+    single_range_image_detection PRIVATE lidar_aruco_detection::lidar_aruco_detection ${PCL_LIBRARIES} ${OpenCV_LIBS}
+)
+
 # Create the marker creator application
 add_executable(create_markers create_markers.cpp)
 target_link_libraries(create_markers PRIVATE ${OpenCV_LIBS})
 
 # Set output directory for executables
-set_target_properties(tag_detection create_markers PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set_target_properties(
+    tag_detection single_range_image_detection create_markers PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                                         "${CMAKE_BINARY_DIR}/bin"
+)
 
 # Install the applications
-install(TARGETS tag_detection create_markers RUNTIME DESTINATION bin)
+install(TARGETS tag_detection single_range_image_detection create_markers RUNTIME DESTINATION bin)

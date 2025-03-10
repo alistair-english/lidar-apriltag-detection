@@ -11,9 +11,15 @@
 
 namespace lidar_aruco_detection {
 
-/**
- * @brief Configuration parameters for marker detection
- */
+struct MarkerSearchConfiguration {
+    // Image projection parameters
+    float angular_resolution_deg = 0.3f;
+
+    // Marker detection parameters
+    std::string dictionary_name = "DICT_APRILTAG_36h11";
+    int intensity_threshold = 10;
+};
+
 struct IntensityGradientConfiguration {
     // Normal estimation parameters
     float normal_estimation_radius = 0.01f;
@@ -31,13 +37,6 @@ struct IntensityGradientConfiguration {
     float min_diagonal = 0.3f;
     float max_diagonal = 1.0f;
     float max_aspect_ratio = 1.5f;
-
-    // Image projection parameters
-    float angular_resolution_deg = 0.3f;
-
-    // Marker detection parameters
-    std::string dictionary_name = "DICT_APRILTAG_36h11";
-    int intensity_threshold = 10;
 };
 
 struct MarkerDetection {
@@ -57,6 +56,7 @@ struct MarkerSearchDebugData {
     cv::Mat thresholded_intensity_image;
     std::vector<ImageMarkerDetection> image_marker_detections;
     std::vector<MarkerDetectionDebugData> marker_detections;
+    PointCloud::Ptr filtered_cloud = nullptr; // Store the filtered cloud for visualization
 };
 
 struct IntensityGradientDebugData {
@@ -68,17 +68,17 @@ struct IntensityGradientDebugData {
     std::vector<MarkerSearchDebugData> obb_marker_searches;
 };
 
-/**
- * @brief Detect markers in a point cloud using intensity gradient clustering
- *
- * @param cloud Input point cloud
- * @param config Configuration parameters
- * @param debug_data Optional reference to store debug data
- * @return std::vector<MarkerDetection> Vector of detected markers
- */
 std::vector<MarkerDetection> detect_markers_using_intensity_gradient_clustering(
     const PointCloud::Ptr &cloud,
-    const IntensityGradientConfiguration &config = IntensityGradientConfiguration(),
+    const IntensityGradientConfiguration &intensity_gradient_config,
+    const MarkerSearchConfiguration &marker_search_config,
     std::shared_ptr<IntensityGradientDebugData> debug_data = nullptr
 );
+
+std::vector<MarkerDetection> detect_markers_using_single_range_image_search(
+    const PointCloud::Ptr &cloud,
+    const MarkerSearchConfiguration &marker_search_config,
+    std::shared_ptr<MarkerSearchDebugData> debug_data = nullptr
+);
+
 } // namespace lidar_aruco_detection

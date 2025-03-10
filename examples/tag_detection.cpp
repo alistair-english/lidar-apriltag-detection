@@ -91,13 +91,16 @@ int main(int argc, char **argv) {
     add_point_cloud_intensity(viewer, cloud, "original", viewports.v1);
 
     // Create configuration with default values
-    IntensityGradientConfiguration config;
+    IntensityGradientConfiguration intensity_gradient_config;
+    MarkerSearchConfiguration marker_search_config;
 
     // Create debug data structure
     auto debug_data = std::make_shared<IntensityGradientDebugData>();
 
     // Detect markers using the configuration
-    const auto markers = detect_markers_using_intensity_gradient_clustering(cloud, config, debug_data);
+    const auto markers = detect_markers_using_intensity_gradient_clustering(
+        cloud, intensity_gradient_config, marker_search_config, debug_data
+    );
 
     add_point_cloud(viewer, debug_data->significant_gradient_points, "filtered", viewports.v2, 1.0, 0.0, 0.0, 2.0);
     visualize_clusters(viewer, debug_data->euclidean_clusters, viewports.v2);
